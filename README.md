@@ -45,6 +45,12 @@ Run migrations:
 python manage.py migrate
 ```
 
+Seed base data:
+
+```powershell
+python manage.py seed_base
+```
+
 Create an admin user if needed:
 
 ```powershell
