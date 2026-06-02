@@ -1,11 +1,10 @@
 import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
-// Layouts
+// 1. Layouts và các trang tính năng (main)
 import MainLayout from "./layouts/MainLayout";
 import AuthLayout from "./layouts/AuthLayout";
 import AdminLayout from "./layouts/AdminLayout";
 
-// Pages
 import HomePage from "./pages/Home/HomePage";
 import BrowsePage from "./pages/Browse/BrowsePage";
 import AuthorsPage from "./pages/Authors/AuthorsPage";
@@ -13,7 +12,13 @@ import CartPage from "./pages/Cart/CartPage";
 import NotFoundPage from "./pages/NotFound/NotFoundPage";
 import BookDetailPage from "./pages/BookDetail/BookDetailPage";
 
-/** Temporary placeholder for pages not yet implemented */
+// 2. Các trang Logic & Bảo mật (HEAD)
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Account from "./pages/Account";
+import ProtectedRoute from "./context/ProtectedRoute";
+
+/** Component hiển thị tạm thời của hệ thống */
 function ComingSoon({ page }) {
   return (
     <div
@@ -55,9 +60,10 @@ function ComingSoon({ page }) {
   );
 }
 
+// 3. Hệ thống cấu hình Tuyến đường (Router) hợp nhất
 const router = createBrowserRouter([
   {
-    // ── Public routes (Header + Footer) ──
+    // ── Public routes (Mua sắm công khai - Sử dụng giao diện chung) ──
     element: <MainLayout />,
     children: [
       { index: true, element: <HomePage /> },
@@ -70,26 +76,44 @@ const router = createBrowserRouter([
     ],
   },
   {
-    // ── Auth routes (Brand panel + Form) ──
+    // ── Auth routes (Giao diện Đăng nhập / Đăng ký) ──
     element: <AuthLayout />,
     children: [
-      { path: "login", element: <ComingSoon page="Đăng nhập" /> },
-      { path: "register", element: <ComingSoon page="Đăng ký" /> },
+      { path: "login", element: <Login /> },
+      { path: "register", element: <Register /> },
     ],
   },
   {
-    // ── Dashboard / Account routes (Sidebar layout) ──
+    // ── Dashboard / Account routes (Giao diện Quản lý / Trang cá nhân) ──
     element: <AdminLayout pageTitle="Dashboard" />,
     children: [
       { path: "dashboard", element: <ComingSoon page="Dashboard" /> },
       { path: "library", element: <ComingSoon page="Thư viện của tôi" /> },
       { path: "orders", element: <ComingSoon page="Đơn hàng" /> },
-      { path: "profile", element: <ComingSoon page="Hồ sơ cá nhân" /> },
+
+      // Thay thế profile bằng Account và bọc trong lớp bảo mật ProtectedRoute
+      {
+        path: "profile",
+        element: (
+          <ProtectedRoute>
+            <Account />
+          </ProtectedRoute>
+        ),
+      },
+      // Giữ thêm path "account" dự phòng để khớp với các đường link cũ
+      {
+        path: "account",
+        element: (
+          <ProtectedRoute>
+            <Account />
+          </ProtectedRoute>
+        ),
+      },
       { path: "settings", element: <ComingSoon page="Cài đặt" /> },
     ],
   },
   {
-    // ── 404 ──
+    // ── 404 Not Found ──
     path: "*",
     element: <NotFoundPage />,
   },
