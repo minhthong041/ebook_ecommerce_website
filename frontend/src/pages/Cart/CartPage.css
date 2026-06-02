@@ -1,0 +1,259 @@
+.cart-page {
+  padding: 40px 24px 80px;
+  max-width: 1180px;
+  margin: 0 auto;
+}
+
+.cart-hero {
+  padding: 32px;
+  border-radius: 28px;
+  background: linear-gradient(
+    180deg,
+    rgba(57, 81, 245, 0.1),
+    rgba(255, 255, 255, 0.9)
+  );
+  border: 1px solid rgba(57, 81, 245, 0.18);
+  margin-bottom: 32px;
+}
+
+.cart-hero__eyebrow {
+  display: inline-flex;
+  gap: 10px;
+  font-weight: 700;
+  color: #384fff;
+  margin-bottom: 14px;
+}
+
+.cart-hero__title {
+  font-size: clamp(2rem, 2.25vw, 2.8rem);
+  margin: 0 0 16px;
+}
+
+.cart-hero__description {
+  margin: 0;
+  max-width: 680px;
+  color: #515a76;
+  line-height: 1.75;
+}
+
+.cart-layout {
+  display: grid;
+  grid-template-columns: 1.7fr 0.95fr;
+  gap: 28px;
+}
+
+.cart-list {
+  background: #ffffff;
+  border: 1px solid #e8ebf5;
+  border-radius: 24px;
+  padding: 24px;
+}
+
+.cart-list__header {
+  display: grid;
+  grid-template-columns: 2.5fr 1fr 1fr 1fr auto;
+  gap: 16px;
+  padding: 0 10px 18px;
+  margin-bottom: 12px;
+  color: #6b728a;
+  font-size: 0.95rem;
+  border-bottom: 1px solid #f3f4f7;
+}
+
+.cart-row {
+  display: grid;
+  grid-template-columns: 2.5fr 1fr 1fr 1fr auto;
+  gap: 16px;
+  align-items: center;
+  padding: 20px 10px;
+  border-bottom: 1px solid #f3f4f7;
+}
+
+.cart-row:last-child {
+  border-bottom: none;
+}
+
+.cart-row__book {
+  display: flex;
+  gap: 18px;
+  align-items: center;
+}
+
+.cart-row__cover {
+  width: 64px;
+  height: 64px;
+  display: grid;
+  place-items: center;
+  background: rgba(57, 97, 255, 0.08);
+  border-radius: 18px;
+  font-size: 1.75rem;
+}
+
+.cart-row__title {
+  margin: 0 0 6px;
+  font-size: 1rem;
+}
+
+.cart-row__author {
+  margin: 0;
+  color: #6b728a;
+  font-size: 0.95rem;
+}
+
+.cart-row__price,
+.cart-row__total {
+  color: #1f2937;
+  font-weight: 700;
+}
+
+.cart-row__quantity {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border: 1px solid #e7eaf5;
+  border-radius: 16px;
+  padding: 8px 10px;
+  min-width: 136px;
+}
+
+.cart-qty-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: 12px;
+  background: #f3f4ff;
+  color: #202840;
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+
+.cart-qty-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.cart-row__remove {
+  border: none;
+  background: transparent;
+  color: #dc3545;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.cart-summary {
+  position: sticky;
+  top: 24px;
+  align-self: start;
+}
+
+.cart-summary__box {
+  background: #ffffff;
+  border: 1px solid #e8ebf5;
+  border-radius: 24px;
+  padding: 28px;
+  display: grid;
+  gap: 20px;
+}
+
+.cart-summary__box h2 {
+  margin: 0;
+  font-size: 1.25rem;
+}
+
+.cart-summary__row {
+  display: flex;
+  justify-content: space-between;
+  gap: 20px;
+  color: #4f5667;
+  font-size: 1rem;
+}
+
+.cart-summary__row--total {
+  font-weight: 800;
+  color: #1f2937;
+  font-size: 1.1rem;
+}
+
+.cart-summary__checkout {
+  width: 100%;
+  padding: 16px 0;
+}
+
+.cart-empty {
+  display: grid;
+  place-items: center;
+  min-height: 320px;
+}
+
+.cart-empty__card {
+  text-align: center;
+  background: #ffffff;
+  border: 1px solid #e8ebf5;
+  border-radius: 28px;
+  padding: 42px 34px;
+  max-width: 520px;
+  width: 100%;
+}
+
+.cart-empty__icon {
+  font-size: 3rem;
+  margin-bottom: 18px;
+}
+
+.cart-empty__card h2 {
+  margin: 0 0 12px;
+  font-size: 1.6rem;
+}
+
+.cart-empty__card p {
+  margin: 0 0 22px;
+  color: #6b728a;
+  line-height: 1.7;
+}
+
+.cart-empty__button {
+  display: inline-flex;
+  justify-content: center;
+  width: 100%;
+}
+
+@media (max-width: 980px) {
+  .cart-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .cart-summary {
+    position: relative;
+    top: 0;
+  }
+}
+
+@media (max-width: 760px) {
+  .cart-page {
+    padding: 24px 16px 64px;
+  }
+
+  .cart-list__header,
+  .cart-row {
+    grid-template-columns: 1.8fr 1fr 1fr 1fr auto;
+  }
+
+  .cart-row {
+    gap: 12px;
+    padding: 18px 6px;
+  }
+
+  .cart-row__book {
+    gap: 14px;
+  }
+
+  .cart-row__price,
+  .cart-row__total {
+    font-size: 0.95rem;
+  }
+
+  .cart-row__quantity {
+    min-width: 120px;
+  }
+}

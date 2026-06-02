@@ -1,139 +1,126 @@
-import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
-import Home from "./pages/Home";
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
+
+// 1. Layouts và các trang tính năng (main)
+import MainLayout from "./layouts/MainLayout";
+import AuthLayout from "./layouts/AuthLayout";
+import AdminLayout from "./layouts/AdminLayout";
+
+import HomePage from "./pages/Home/HomePage";
+import BrowsePage from "./pages/Browse/BrowsePage";
+import AuthorsPage from "./pages/Authors/AuthorsPage";
+import CartPage from "./pages/Cart/CartPage";
+import NotFoundPage from "./pages/NotFound/NotFoundPage";
+import BookDetailPage from "./pages/BookDetail/BookDetailPage";
+
+// 2. Các trang Logic & Bảo mật (HEAD)
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Account from "./pages/Account";
 import ProtectedRoute from "./context/ProtectedRoute";
 
-// Import các thành phần MUI để nâng cấp thanh điều hướng (Navbar)
-import {
-  AppBar,
-  Toolbar,
-  Typography,
-  Button,
-  Box,
-  Container,
-} from "@mui/material";
-import { MenuBookOutlined } from "@mui/icons-material";
-
-const Navbar = () => {
+/** Component hiển thị tạm thời của hệ thống */
+function ComingSoon({ page }) {
   return (
-    <AppBar
-      position="static"
-      color="inherit"
-      elevation={1}
-      sx={{ borderBottom: "1px solid #e0e0e0" }}
+    <div
+      style={{
+        minHeight: "60vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "16px",
+        padding: "40px 20px",
+        textAlign: "center",
+      }}
     >
-      <Container maxWidth="lg">
-        <Toolbar
-          disableGutters
-          sx={{ display: "flex", justifyContent: "space-between" }}
-        >
-          {/* 1. Logo và Tên dự án nằm ở bên trái */}
-          <Box
-            component={Link}
-            to="/"
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 1,
-              textDecoration: "none",
-              color: "inherit",
-            }}
-          >
-            <MenuBookOutlined color="primary" sx={{ fontSize: 28 }} />
-            <Typography
-              variant="h6"
-              noWrap
-              sx={{
-                fontWeight: 800,
-                letterSpacing: ".05rem",
-                background: "linear-gradient(45deg, #1976d2 30%, #00b0ff 90%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-              }}
-            >
-              EBOOKSHOP
-            </Typography>
-          </Box>
-
-          {/* 2. Các nút điều hướng xịn mịn nằm ở bên phải */}
-          <Box sx={{ display: "flex", gap: 1.5 }}>
-            <Button
-              component={Link}
-              to="/"
-              variant="text"
-              color="inherit"
-              sx={{ fontWeight: 600, textTransform: "none", borderRadius: 2 }}
-            >
-              Trang chủ
-            </Button>
-
-            <Button
-              component={Link}
-              to="/login"
-              variant="text"
-              color="inherit"
-              sx={{ fontWeight: 600, textTransform: "none", borderRadius: 2 }}
-            >
-              Đăng nhập
-            </Button>
-
-            <Button
-              component={Link}
-              to="/register"
-              variant="contained"
-              color="primary"
-              sx={{
-                fontWeight: 600,
-                textTransform: "none",
-                borderRadius: 2,
-                boxShadow: "none",
-              }}
-            >
-              Đăng ký
-            </Button>
-
-            <Button
-              component={Link}
-              to="/account"
-              variant="outlined"
-              color="primary"
-              sx={{ fontWeight: 600, textTransform: "none", borderRadius: 2 }}
-            >
-              Tài khoản
-            </Button>
-          </Box>
-        </Toolbar>
-      </Container>
-    </AppBar>
+      <div style={{ fontSize: "3rem" }}>🚧</div>
+      <h2
+        style={{
+          fontFamily: "var(--font-heading)",
+          fontSize: "1.75rem",
+          fontWeight: 800,
+          background: "var(--gradient-text)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          backgroundClip: "text",
+        }}
+      >
+        {page}
+      </h2>
+      <p
+        style={{
+          color: "var(--text-secondary)",
+          maxWidth: "360px",
+          lineHeight: 1.7,
+        }}
+      >
+        Trang này đang được xây dựng. Quay lại sớm nhé!
+      </p>
+    </div>
   );
-};
+}
+
+// 3. Hệ thống cấu hình Tuyến đường (Router) hợp nhất
+const router = createBrowserRouter([
+  {
+    // ── Public routes (Mua sắm công khai - Sử dụng giao diện chung) ──
+    element: <MainLayout />,
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: "browse", element: <BrowsePage /> },
+      { path: "authors", element: <AuthorsPage /> },
+      { path: "pricing", element: <ComingSoon page="Premium" /> },
+      { path: "search", element: <ComingSoon page="Tìm kiếm" /> },
+      { path: "cart", element: <CartPage /> },
+      { path: "book/:id", element: <BookDetailPage /> },
+    ],
+  },
+  {
+    // ── Auth routes (Giao diện Đăng nhập / Đăng ký) ──
+    element: <AuthLayout />,
+    children: [
+      { path: "login", element: <Login /> },
+      { path: "register", element: <Register /> },
+    ],
+  },
+  {
+    // ── Dashboard / Account routes (Giao diện Quản lý / Trang cá nhân) ──
+    element: <AdminLayout pageTitle="Dashboard" />,
+    children: [
+      { path: "dashboard", element: <ComingSoon page="Dashboard" /> },
+      { path: "library", element: <ComingSoon page="Thư viện của tôi" /> },
+      { path: "orders", element: <ComingSoon page="Đơn hàng" /> },
+
+      // Thay thế profile bằng Account và bọc trong lớp bảo mật ProtectedRoute
+      {
+        path: "profile",
+        element: (
+          <ProtectedRoute>
+            <Account />
+          </ProtectedRoute>
+        ),
+      },
+      // Giữ thêm path "account" dự phòng để khớp với các đường link cũ
+      {
+        path: "account",
+        element: (
+          <ProtectedRoute>
+            <Account />
+          </ProtectedRoute>
+        ),
+      },
+      { path: "settings", element: <ComingSoon page="Cài đặt" /> },
+    ],
+  },
+  {
+    // ── 404 Not Found ──
+    path: "*",
+    element: <NotFoundPage />,
+  },
+]);
 
 function App() {
-  return (
-    <BrowserRouter>
-      {/* Gắn Thanh điều hướng xịn vừa tạo vào đây */}
-      <Navbar />
-
-      {/* Toàn bộ vùng nội dung bên dưới sẽ có màu nền xám nhạt nhẹ nhàng để nổi bật các Form Card lên */}
-      <Box sx={{ bgcolor: "#f9f9f9", minHeight: "calc(100vh - 64px)", py: 4 }}>
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route
-            path="/account"
-            element={
-              <ProtectedRoute>
-                <Account />
-              </ProtectedRoute>
-            }
-          />
-        </Routes>
-      </Box>
-    </BrowserRouter>
-  );
+  return <RouterProvider router={router} />;
 }
 
 export default App;
