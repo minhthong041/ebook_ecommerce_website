@@ -1,34 +1,37 @@
-import { createContext, useState, useEffect } from 'react';
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useState } from 'react';
 
-export const AuthContext = createContext();
+export const AuthContext = createContext(null);
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-
-  // Kiểm tra token khi load lại trang
-  useEffect(() => {
+  // Áp dụng Lazy Initial State: Kiểm tra token trực tiếp lúc khởi tạo state
+  // Cách này loại bỏ hoàn toàn lỗi "set-state-in-effect" của ESLint
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
     const token = localStorage.getItem('access_token');
-    if (token) {
-      // Có thể gọi API lấy thông tin user từ token ở đây
-      setIsAuthenticated(true);
-    }
-  }, []);
+    return !!token; // Trả về true nếu có token, ngược lại là false
+  });
+
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('user_info');
+    return savedUser ? JSON.parse(savedUser) : null;
+  });
 
   const login = (token, userData) => {
-    localStorage.setItem('access_token', token); // Lưu token
-    setUser(userData);
+    localStorage.setItem('access_token', token);
+    localStorage.setItem('user_info', JSON.stringify(userData));
     setIsAuthenticated(true);
+    setUser(userData);
   };
 
   const logout = () => {
-    localStorage.removeItem('access_token'); // Xóa token
-    setUser(null);
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('user_info');
     setIsAuthenticated(false);
+    setUser(null);
   };
 
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated, login, logout }}>
+    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
       {children}
     </AuthContext.Provider>
   );
