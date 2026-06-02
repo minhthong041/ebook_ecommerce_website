@@ -1,68 +1,139 @@
-import { useQuery } from '@tanstack/react-query'
-import { apiClient } from './api/client'
-import './App.css'
+import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
+import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Account from "./pages/Account";
+import ProtectedRoute from "./context/ProtectedRoute";
+
+// Import các thành phần MUI để nâng cấp thanh điều hướng (Navbar)
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  Box,
+  Container,
+} from "@mui/material";
+import { MenuBookOutlined } from "@mui/icons-material";
+
+const Navbar = () => {
+  return (
+    <AppBar
+      position="static"
+      color="inherit"
+      elevation={1}
+      sx={{ borderBottom: "1px solid #e0e0e0" }}
+    >
+      <Container maxWidth="lg">
+        <Toolbar
+          disableGutters
+          sx={{ display: "flex", justifyContent: "space-between" }}
+        >
+          {/* 1. Logo và Tên dự án nằm ở bên trái */}
+          <Box
+            component={Link}
+            to="/"
+            sx={{
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              textDecoration: "none",
+              color: "inherit",
+            }}
+          >
+            <MenuBookOutlined color="primary" sx={{ fontSize: 28 }} />
+            <Typography
+              variant="h6"
+              noWrap
+              sx={{
+                fontWeight: 800,
+                letterSpacing: ".05rem",
+                background: "linear-gradient(45deg, #1976d2 30%, #00b0ff 90%)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+              }}
+            >
+              EBOOKSHOP
+            </Typography>
+          </Box>
+
+          {/* 2. Các nút điều hướng xịn mịn nằm ở bên phải */}
+          <Box sx={{ display: "flex", gap: 1.5 }}>
+            <Button
+              component={Link}
+              to="/"
+              variant="text"
+              color="inherit"
+              sx={{ fontWeight: 600, textTransform: "none", borderRadius: 2 }}
+            >
+              Trang chủ
+            </Button>
+
+            <Button
+              component={Link}
+              to="/login"
+              variant="text"
+              color="inherit"
+              sx={{ fontWeight: 600, textTransform: "none", borderRadius: 2 }}
+            >
+              Đăng nhập
+            </Button>
+
+            <Button
+              component={Link}
+              to="/register"
+              variant="contained"
+              color="primary"
+              sx={{
+                fontWeight: 600,
+                textTransform: "none",
+                borderRadius: 2,
+                boxShadow: "none",
+              }}
+            >
+              Đăng ký
+            </Button>
+
+            <Button
+              component={Link}
+              to="/account"
+              variant="outlined"
+              color="primary"
+              sx={{ fontWeight: 600, textTransform: "none", borderRadius: 2 }}
+            >
+              Tài khoản
+            </Button>
+          </Box>
+        </Toolbar>
+      </Container>
+    </AppBar>
+  );
+};
 
 function App() {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-  const { data, error, isFetching, isLoading, refetch } = useQuery({
-    queryKey: ['api-health'],
-    queryFn: async () => {
-      const response = await apiClient.get('/health/')
-      return response.data
-    },
-    retry: false,
-  })
-
-  const status = data?.status === 'ok' ? 'Connected' : 'Waiting'
-
   return (
-    <main className="app-shell">
-      <section className="workspace-header">
-        <div>
-          <p className="eyebrow">B2C Ebook Ecommerce</p>
-          <h1>Project Setup Dashboard</h1>
-          <p className="summary">
-            Django, PostgreSQL, and React are wired together for local
-            development.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="refresh-button"
-          onClick={() => refetch()}
-          disabled={isFetching}
-        >
-          {isFetching ? 'Checking' : 'Check API'}
-        </button>
-      </section>
+    <BrowserRouter>
+      {/* Gắn Thanh điều hướng xịn vừa tạo vào đây */}
+      <Navbar />
 
-      <section className="status-grid" aria-label="Setup status">
-        <div className="status-card">
-          <span className="status-label">Backend API</span>
-          <strong>{isLoading ? 'Checking' : status}</strong>
-          <p>{data?.message || error?.message || 'Waiting for Django API.'}</p>
-        </div>
-        <div className="status-card">
-          <span className="status-label">API Base URL</span>
-          <strong>{apiBaseUrl}</strong>
-          <p>Configured through frontend .env.</p>
-        </div>
-        <div className="status-card">
-          <span className="status-label">Admin Panel</span>
-          <strong>Ready</strong>
-          <p>Open Django admin after the backend server is running.</p>
-        </div>
-      </section>
-
-      <section className="next-panel">
-        <h2>Next build area</h2>
-        <p>
-          The next step is creating catalog models and API endpoints for books,
-          authors, publishers, categories, ebook files, and search filters.
-        </p>
-      </section>
-    </main>
-  )
+      {/* Toàn bộ vùng nội dung bên dưới sẽ có màu nền xám nhạt nhẹ nhàng để nổi bật các Form Card lên */}
+      <Box sx={{ bgcolor: "#f9f9f9", minHeight: "calc(100vh - 64px)", py: 4 }}>
+        <Routes>
+          <Route path="/" element={<Home />} />
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <Account />
+              </ProtectedRoute>
+            }
+          />
+        </Routes>
+      </Box>
+    </BrowserRouter>
+  );
 }
 
-export default App
+export default App;
