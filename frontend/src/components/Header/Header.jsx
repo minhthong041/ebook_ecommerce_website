@@ -1,5 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
+import CartDrawer from "../CartDrawer/CartDrawer";
+import { CART_ITEMS } from "../../data/cartData";
 import "./Header.css";
 
 const NAV_LINKS = [
@@ -18,9 +20,11 @@ const DROPDOWN_ITEMS = [
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
+  const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
+  const [cartItems, setCartItems] = useState(CART_ITEMS);
   const userMenuRef = useRef(null);
   const navigate = useNavigate();
 
@@ -42,23 +46,39 @@ export default function Header() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  // Lock body scroll when drawer is open
+  // Lock body scroll when any drawer is open
   useEffect(() => {
-    document.body.style.overflow = drawerOpen ? "hidden" : "";
+    document.body.style.overflow =
+      mobileDrawerOpen || cartDrawerOpen ? "hidden" : "";
     return () => {
       document.body.style.overflow = "";
     };
-  }, [drawerOpen]);
+  }, [mobileDrawerOpen, cartDrawerOpen]);
 
   const handleSearch = (e) => {
     e.preventDefault();
     if (searchValue.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchValue.trim())}`);
-      setDrawerOpen(false);
+      setMobileDrawerOpen(false);
     }
   };
 
-  const closeDrawer = () => setDrawerOpen(false);
+  const handleChangeQuantity = (itemId, newQuantity) => {
+    setCartItems((prevItems) =>
+      prevItems.map((item) =>
+        item.id === itemId
+          ? { ...item, quantity: Math.max(1, newQuantity) }
+          : item,
+      ),
+    );
+  };
+
+  const handleRemove = (itemId) => {
+    setCartItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
+  };
+
+  const closeMobileDrawer = () => setMobileDrawerOpen(false);
+  const closeCartDrawer = () => setCartDrawerOpen(false);
 
   return (
     <>
@@ -115,12 +135,21 @@ export default function Header() {
           {/* Action Icons */}
           <div className="header__actions">
             {/* Cart */}
-            <Link to="/cart" className="header__icon-btn" aria-label="Giỏ hàng">
+            <button
+              type="button"
+              className="header__icon-btn"
+              aria-label="Mở giỏ hàng"
+              aria-expanded={cartDrawerOpen}
+              onClick={() => setCartDrawerOpen((value) => !value)}
+            >
               🛒
-              <span className="badge" aria-label="3 sản phẩm trong giỏ">
-                3
+              <span
+                className="badge"
+                aria-label={`${cartItems.reduce((sum, item) => sum + item.quantity, 0)} sản phẩm trong giỏ`}
+              >
+                {cartItems.reduce((sum, item) => sum + item.quantity, 0)}
               </span>
-            </Link>
+            </button>
 
             {/* User dropdown */}
             <div
@@ -184,10 +213,10 @@ export default function Header() {
             {/* Hamburger */}
             <button
               type="button"
-              className={`header__hamburger${drawerOpen ? " header__hamburger--open" : ""}`}
-              onClick={() => setDrawerOpen((v) => !v)}
-              aria-label={drawerOpen ? "Đóng menu" : "Mở menu"}
-              aria-expanded={drawerOpen}
+              className={`header__hamburger${mobileDrawerOpen ? " header__hamburger--open" : ""}`}
+              onClick={() => setMobileDrawerOpen((v) => !v)}
+              aria-label={mobileDrawerOpen ? "Đóng menu" : "Mở menu"}
+              aria-expanded={mobileDrawerOpen}
             >
               <span className="header__hamburger-line" />
               <span className="header__hamburger-line" />
@@ -198,29 +227,37 @@ export default function Header() {
       </header>
 
       {/* Mobile Drawer Overlay */}
-      {drawerOpen && (
+      {mobileDrawerOpen && (
         <div
           className="header__drawer-overlay"
-          onClick={closeDrawer}
+          onClick={closeMobileDrawer}
           aria-hidden="true"
         />
       )}
 
+      <CartDrawer
+        isOpen={cartDrawerOpen}
+        items={cartItems}
+        onClose={closeCartDrawer}
+        onChangeQuantity={handleChangeQuantity}
+        onRemove={handleRemove}
+      />
+
       {/* Mobile Drawer */}
       <aside
-        className={`header__drawer${drawerOpen ? " header__drawer--open" : ""}`}
+        className={`header__drawer${mobileDrawerOpen ? " header__drawer--open" : ""}`}
         aria-label="Menu điều hướng"
-        aria-hidden={!drawerOpen}
+        aria-hidden={!mobileDrawerOpen}
       >
         <div className="header__drawer-header">
-          <Link to="/" className="header__logo" onClick={closeDrawer}>
+          <Link to="/" className="header__logo" onClick={closeMobileDrawer}>
             <div className="header__logo-icon">📖</div>
             <span className="header__logo-text">BookVerse</span>
           </Link>
           <button
             type="button"
             className="header__drawer-close"
-            onClick={closeDrawer}
+            onClick={closeMobileDrawer}
             aria-label="Đóng menu"
           >
             ✕
@@ -260,7 +297,7 @@ export default function Header() {
               className={({ isActive }) =>
                 `header__drawer-nav-link${isActive ? " header__drawer-nav-link--active" : ""}`
               }
-              onClick={closeDrawer}
+              onClick={closeMobileDrawer}
             >
               <span className="header__drawer-nav-icon">{link.icon}</span>
               {link.label}
@@ -274,15 +311,16 @@ export default function Header() {
             to="/cart"
             className="btn btn-ghost"
             style={{ justifyContent: "center" }}
-            onClick={closeDrawer}
+            onClick={closeMobileDrawer}
           >
-            🛒 Giỏ hàng (3)
+            🛒 Giỏ hàng (
+            {cartItems.reduce((sum, item) => sum + item.quantity, 0)})
           </Link>
           <Link
             to="/pricing"
             className="btn btn-primary"
             style={{ justifyContent: "center" }}
-            onClick={closeDrawer}
+            onClick={closeMobileDrawer}
           >
             ✨ Nâng lên Premium
           </Link>
