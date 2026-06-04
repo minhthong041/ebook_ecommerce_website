@@ -12,6 +12,10 @@ import CartPage from "./pages/Cart/CartPage";
 import NotFoundPage from "./pages/NotFound/NotFoundPage";
 import BookDetailPage from "./pages/BookDetail/BookDetailPage";
 
+// 🟢 THÊM MỚI: Import 2 trang vừa tạo
+import CheckoutPage from "./pages/CheckoutPage";
+import OrderSuccessPage from "./pages/OrderSuccessPage";
+
 // 2. Các trang Logic & Bảo mật (HEAD)
 import Login from "./pages/Login";
 import Register from "./pages/Register";
@@ -73,6 +77,10 @@ const router = createBrowserRouter([
       { path: "search", element: <ComingSoon page="Tìm kiếm" /> },
       { path: "cart", element: <CartPage /> },
       { path: "book/:id", element: <BookDetailPage /> },
+
+      // 🟢 THÊM MỚI: Khai báo route cho Checkout và Order Success
+      { path: "checkout", element: <CheckoutPage /> },
+      { path: "order-success", element: <OrderSuccessPage /> },
     ],
   },
   {
@@ -91,7 +99,6 @@ const router = createBrowserRouter([
       { path: "library", element: <ComingSoon page="Thư viện của tôi" /> },
       { path: "orders", element: <ComingSoon page="Đơn hàng" /> },
 
-      // Thay thế profile bằng Account và bọc trong lớp bảo mật ProtectedRoute
       {
         path: "profile",
         element: (
@@ -100,7 +107,6 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      // Giữ thêm path "account" dự phòng để khớp với các đường link cũ
       {
         path: "account",
         element: (

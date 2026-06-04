@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+// 🟢 SỬA DÒNG NÀY: Import thêm useNavigate
+import { Link, useNavigate } from "react-router-dom";
 import { CART_ITEMS } from "../../data/cartData";
 import "./CartPage.css";
 
@@ -56,6 +57,8 @@ function CartRow({ item, onChangeQuantity, onRemove }) {
 
 export default function CartPage() {
   const [cartItems, setCartItems] = useState(CART_ITEMS);
+  // 🟢 THÊM DÒNG NÀY: Khởi tạo biến navigate
+  const navigate = useNavigate();
 
   const subtotal = useMemo(
     () => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
@@ -132,6 +135,8 @@ export default function CartPage() {
               <button
                 type="button"
                 className="btn btn-primary cart-summary__checkout"
+                // 🟢 SỬA DÒNG NÀY: Thêm sự kiện onClick để chuyển trang
+                onClick={() => navigate("/checkout")}
               >
                 Thanh toán
               </button>
