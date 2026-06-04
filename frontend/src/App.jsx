@@ -1,68 +1,126 @@
-import { useQuery } from '@tanstack/react-query'
-import { apiClient } from './api/client'
-import './App.css'
+import { createBrowserRouter, RouterProvider } from "react-router-dom";
 
-function App() {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-  const { data, error, isFetching, isLoading, refetch } = useQuery({
-    queryKey: ['api-health'],
-    queryFn: async () => {
-      const response = await apiClient.get('/health/')
-      return response.data
-    },
-    retry: false,
-  })
+// 1. Layouts và các trang tính năng (main)
+import MainLayout from "./layouts/MainLayout";
+import AuthLayout from "./layouts/AuthLayout";
+import AdminLayout from "./layouts/AdminLayout";
 
-  const status = data?.status === 'ok' ? 'Connected' : 'Waiting'
+import HomePage from "./pages/Home/HomePage";
+import BrowsePage from "./pages/Browse/BrowsePage";
+import AuthorsPage from "./pages/Authors/AuthorsPage";
+import CartPage from "./pages/Cart/CartPage";
+import NotFoundPage from "./pages/NotFound/NotFoundPage";
+import BookDetailPage from "./pages/BookDetail/BookDetailPage";
 
+// 2. Các trang Logic & Bảo mật (HEAD)
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import Account from "./pages/Account";
+import ProtectedRoute from "./context/ProtectedRoute";
+
+/** Component hiển thị tạm thời của hệ thống */
+function ComingSoon({ page }) {
   return (
-    <main className="app-shell">
-      <section className="workspace-header">
-        <div>
-          <p className="eyebrow">B2C Ebook Ecommerce</p>
-          <h1>Project Setup Dashboard</h1>
-          <p className="summary">
-            Django, PostgreSQL, and React are wired together for local
-            development.
-          </p>
-        </div>
-        <button
-          type="button"
-          className="refresh-button"
-          onClick={() => refetch()}
-          disabled={isFetching}
-        >
-          {isFetching ? 'Checking' : 'Check API'}
-        </button>
-      </section>
-
-      <section className="status-grid" aria-label="Setup status">
-        <div className="status-card">
-          <span className="status-label">Backend API</span>
-          <strong>{isLoading ? 'Checking' : status}</strong>
-          <p>{data?.message || error?.message || 'Waiting for Django API.'}</p>
-        </div>
-        <div className="status-card">
-          <span className="status-label">API Base URL</span>
-          <strong>{apiBaseUrl}</strong>
-          <p>Configured through frontend .env.</p>
-        </div>
-        <div className="status-card">
-          <span className="status-label">Admin Panel</span>
-          <strong>Ready</strong>
-          <p>Open Django admin after the backend server is running.</p>
-        </div>
-      </section>
-
-      <section className="next-panel">
-        <h2>Next build area</h2>
-        <p>
-          The next step is creating catalog models and API endpoints for books,
-          authors, publishers, categories, ebook files, and search filters.
-        </p>
-      </section>
-    </main>
-  )
+    <div
+      style={{
+        minHeight: "60vh",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+        justifyContent: "center",
+        gap: "16px",
+        padding: "40px 20px",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: "3rem" }}>🚧</div>
+      <h2
+        style={{
+          fontFamily: "var(--font-heading)",
+          fontSize: "1.75rem",
+          fontWeight: 800,
+          background: "var(--gradient-text)",
+          WebkitBackgroundClip: "text",
+          WebkitTextFillColor: "transparent",
+          backgroundClip: "text",
+        }}
+      >
+        {page}
+      </h2>
+      <p
+        style={{
+          color: "var(--text-secondary)",
+          maxWidth: "360px",
+          lineHeight: 1.7,
+        }}
+      >
+        Trang này đang được xây dựng. Quay lại sớm nhé!
+      </p>
+    </div>
+  );
 }
 
-export default App
+// 3. Hệ thống cấu hình Tuyến đường (Router) hợp nhất
+const router = createBrowserRouter([
+  {
+    // ── Public routes (Mua sắm công khai - Sử dụng giao diện chung) ──
+    element: <MainLayout />,
+    children: [
+      { index: true, element: <HomePage /> },
+      { path: "browse", element: <BrowsePage /> },
+      { path: "authors", element: <AuthorsPage /> },
+      { path: "pricing", element: <ComingSoon page="Premium" /> },
+      { path: "search", element: <ComingSoon page="Tìm kiếm" /> },
+      { path: "cart", element: <CartPage /> },
+      { path: "book/:id", element: <BookDetailPage /> },
+    ],
+  },
+  {
+    // ── Auth routes (Giao diện Đăng nhập / Đăng ký) ──
+    element: <AuthLayout />,
+    children: [
+      { path: "login", element: <Login /> },
+      { path: "register", element: <Register /> },
+    ],
+  },
+  {
+    // ── Dashboard / Account routes (Giao diện Quản lý / Trang cá nhân) ──
+    element: <AdminLayout pageTitle="Dashboard" />,
+    children: [
+      { path: "dashboard", element: <ComingSoon page="Dashboard" /> },
+      { path: "library", element: <ComingSoon page="Thư viện của tôi" /> },
+      { path: "orders", element: <ComingSoon page="Đơn hàng" /> },
+
+      // Thay thế profile bằng Account và bọc trong lớp bảo mật ProtectedRoute
+      {
+        path: "profile",
+        element: (
+          <ProtectedRoute>
+            <Account />
+          </ProtectedRoute>
+        ),
+      },
+      // Giữ thêm path "account" dự phòng để khớp với các đường link cũ
+      {
+        path: "account",
+        element: (
+          <ProtectedRoute>
+            <Account />
+          </ProtectedRoute>
+        ),
+      },
+      { path: "settings", element: <ComingSoon page="Cài đặt" /> },
+    ],
+  },
+  {
+    // ── 404 Not Found ──
+    path: "*",
+    element: <NotFoundPage />,
+  },
+]);
+
+function App() {
+  return <RouterProvider router={router} />;
+}
+
+export default App;

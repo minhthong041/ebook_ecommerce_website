@@ -1,27 +1,39 @@
-from django.contrib.auth import authenticate
-
 from rest_framework import serializers
+from django.contrib.auth import get_user_model
+from django.core.exceptions import ValidationError
 
-from .models import User
+User = get_user_model()
 
-
-class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField()
+class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(write_only=True)
 
-    def validate(self, attrs):
-        user = authenticate(
-            username=attrs["username"], password=attrs["password"]
-        )
-        if not user:
-            raise serializers.ValidationError("Invalid username or password.")
-        if not user.is_active:
-            raise serializers.ValidationError("User account is disabled.")
-        attrs["user"] = user
-        return attrs
-
-
-class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ["id", "username", "email", "full_name", "role_id"]
+        fields = ['username', 'email', 'full_name', 'password', 'phone_number', 'dob']
+
+    def create(self, validated_data):
+        user = User(
+            username=validated_data['username'],
+            email=validated_data['email'],
+            full_name=validated_data['full_name'],
+        )
+        if 'phone_number' in validated_data:
+            user.phone_number = validated_data['phone_number']
+        if 'dob' in validated_data:
+            user.dob = validated_data['dob']
+            
+        # Hashes the password!
+        user.set_password(validated_data['password'])
+        user.save()
+        # Customer creation is handled by post_save signal in models
+        return user
+
+class LoginSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True)
+
+class UserMeSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = User
+        fields = ['id', 'username', 'email', 'full_name', 'phone_number', 'dob', 'date_joined']
+        read_only_fields = ['id', 'email', 'date_joined', 'username']
