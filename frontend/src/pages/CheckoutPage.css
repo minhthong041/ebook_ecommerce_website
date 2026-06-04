@@ -1,5 +1,4 @@
 .checkout-page {
-  max-w-4xl;
   margin: 40px auto;
   padding: 0 20px;
   max-width: 1100px;
@@ -24,7 +23,7 @@
   background: #fff;
   padding: 24px;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   border: 1px solid #eee;
 }
 
@@ -54,8 +53,8 @@
   border-radius: 6px;
   font-size: 1rem;
   transition: border-color 0.2s;
-  
-  resize: none; 
+
+  resize: none;
 }
 
 .form-group input:focus,
