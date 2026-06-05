@@ -1,0 +1,64 @@
+.order-success-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 60vh;
+  padding: 40px 20px;
+  text-align: center;
+  margin-top: 2rem;
+}
+
+.success-icon {
+  width: 100px;
+  height: 100px;
+  color: #10b981; /* Màu xanh lá cây báo thành công */
+  margin-bottom: 24px;
+}
+
+.success-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--text-primary, #111827);
+  margin-bottom: 16px;
+}
+
+.success-message {
+  font-size: 1.1rem;
+  color: var(--text-secondary, #4b5563);
+  margin-bottom: 32px;
+  max-width: 500px;
+  line-height: 1.6;
+}
+
+.success-actions {
+  display: flex;
+  gap: 16px;
+  justify-content: center;
+}
+
+/* Nút phụ (Secondary button) nếu cần */
+/* Nút phụ (Secondary button) */
+.btn-secondary {
+  padding: 12px 24px;
+  background-color: #f3f4f6; /* Màu xám nhạt */
+  color: #374151;
+  border: 1px solid #d1d5db;
+  border-radius: 9999px; /* 🟢 Chỉnh thành 9999px để bo tròn hẳn (dạng viên thuốc) giống nút primary */
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease; /* 🟢 Làm cho hiệu ứng chuyển động mượt mà hơn */
+  text-decoration: none;
+}
+
+.btn-secondary:hover {
+  background-color: #e5e7eb; /* Đổi màu xám tối hơn một chút xíu khi hover */
+  transform: translateY(-3px); /* 🟢 Nhô lên trên 3px khi lia chuột vào */
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* 🟢 Thêm bóng đổ nhẹ cho có chiều sâu */
+}
+
+.btn-secondary:active {
+  transform: translateY(
+    0
+  ); /* Khi click (nhấn chuột xuống) thì nút lún trở lại vị trí cũ */
+}
