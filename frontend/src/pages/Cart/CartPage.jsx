@@ -11,15 +11,15 @@ function CartRow({ item, onChangeQuantity, onRemove }) {
     <div className="cart-row">
       <div className="cart-row__book">
         <div className="cart-row__cover" aria-hidden="true">
-          {item.cover}
+          {item.cover || "📘"}
         </div>
-        <div>
+        <div className="cart-row__meta">
           <h3 className="cart-row__title">{item.title}</h3>
           <p className="cart-row__author">{item.author}</p>
         </div>
       </div>
 
-      <div className="cart-row__price">{item.price.toLocaleString()}₫</div>
+      <div className="cart-row__price">{item.price.toLocaleString("vi-VN")}₫</div>
 
       <div className="cart-row__quantity">
         <button
@@ -31,7 +31,7 @@ function CartRow({ item, onChangeQuantity, onRemove }) {
         >
           −
         </button>
-        <span>{item.quantity}</span>
+        <span className="cart-qty-value">{item.quantity}</span>
         <button
           type="button"
           className="cart-qty-btn"
@@ -42,14 +42,15 @@ function CartRow({ item, onChangeQuantity, onRemove }) {
         </button>
       </div>
 
-      <div className="cart-row__total">{itemTotal.toLocaleString()}₫</div>
+      <div className="cart-row__total">{itemTotal.toLocaleString("vi-VN")}₫</div>
 
       <button
         type="button"
         className="cart-row__remove"
         onClick={() => onRemove(item.id)}
+        title="Xóa khỏi giỏ hàng"
       >
-        Xóa
+        ✕
       </button>
     </div>
   );
@@ -96,41 +97,63 @@ export default function CartPage() {
         </div>
       </section>
 
+      {/* Checkout Steps Indicator */}
+      <div className="cart-steps container">
+        <div className="cart-step cart-step--active">
+          <span className="cart-step__num">1</span>
+          <span className="cart-step__label">Giỏ hàng</span>
+        </div>
+        <div className="cart-steps__line cart-steps__line--active" />
+        <div className="cart-step">
+          <span className="cart-step__num">2</span>
+          <span className="cart-step__label">Thanh toán</span>
+        </div>
+        <div className="cart-steps__line" />
+        <div className="cart-step">
+          <span className="cart-step__num">3</span>
+          <span className="cart-step__label">Hoàn tất</span>
+        </div>
+      </div>
+
       {cartItems.length > 0 ? (
-        <div className="cart-layout">
+        <div className="cart-layout container">
           <section className="cart-list">
             <div className="cart-list__header">
               <span>Sản phẩm</span>
-              <span>Giá</span>
+              <span>Đơn giá</span>
               <span>Số lượng</span>
-              <span>Tổng</span>
+              <span>Tổng tiền</span>
               <span aria-hidden="true"></span>
             </div>
 
-            {cartItems.map((item) => (
-              <CartRow
-                key={item.id}
-                item={item}
-                onChangeQuantity={handleChangeQuantity}
-                onRemove={handleRemove}
-              />
-            ))}
+            <div className="cart-list__items">
+              {cartItems.map((item) => (
+                <CartRow
+                  key={item.id}
+                  item={item}
+                  onChangeQuantity={handleChangeQuantity}
+                  onRemove={handleRemove}
+                />
+              ))}
+            </div>
           </section>
 
           <aside className="cart-summary">
-            <div className="cart-summary__box">
+            <div className="cart-summary__box glass-card">
               <h2>Tóm tắt đơn hàng</h2>
+              <div className="cart-summary__divider" />
               <div className="cart-summary__row">
                 <span>Tạm tính</span>
-                <span>{subtotal.toLocaleString()}₫</span>
+                <span>{subtotal.toLocaleString("vi-VN")}₫</span>
               </div>
               <div className="cart-summary__row">
                 <span>Phí vận chuyển</span>
-                <span>{shipping.toLocaleString()}₫</span>
+                <span>{shipping.toLocaleString("vi-VN")}₫</span>
               </div>
+              <div className="cart-summary__divider" />
               <div className="cart-summary__row cart-summary__row--total">
                 <span>Tổng thanh toán</span>
-                <span>{total.toLocaleString()}₫</span>
+                <span className="cart-summary__total-val">{total.toLocaleString("vi-VN")}₫</span>
               </div>
               <button
                 type="button"
@@ -138,17 +161,20 @@ export default function CartPage() {
                 // 🟢 SỬA DÒNG NÀY: Thêm sự kiện onClick để chuyển trang
                 onClick={() => navigate("/checkout")}
               >
-                Thanh toán
+                Tiến hành thanh toán
               </button>
+              <Link to="/browse" className="cart-summary__continue">
+                ← Tiếp tục mua sắm
+              </Link>
             </div>
           </aside>
         </div>
       ) : (
-        <section className="cart-empty">
-          <div className="cart-empty__card">
+        <section className="cart-empty container">
+          <div className="cart-empty__card glass-card">
             <div className="cart-empty__icon">🛒</div>
             <h2>Giỏ hàng của bạn đang trống</h2>
-            <p>Thêm một vài cuốn sách yêu thích để tiếp tục mua sắm.</p>
+            <p>Thêm một vài cuốn sách yêu thích để tiếp tục mua sắm các tựa sách hay nhất.</p>
             <Link to="/browse" className="btn btn-primary cart-empty__button">
               Tiếp tục mua sắm
             </Link>

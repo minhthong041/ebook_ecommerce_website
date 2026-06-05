@@ -139,7 +139,7 @@ export default function BrowsePage() {
     <>
       {/* Search Filter */}
       <div className="filter-group">
-        <span className="filter-group__title">Tìm kiếm</span>
+        <span className="filter-group__title">Tìm kiếm nhanh</span>
         <div className="filter-search">
           <span className="filter-search__icon">🔍</span>
           <input
@@ -165,19 +165,24 @@ export default function BrowsePage() {
 
       {/* Format Filter */}
       <div className="filter-group">
-        <span className="filter-group__title">Định dạng</span>
-        <div className="filter-list">
-          {FORMAT_FILTERS.map((format) => (
-            <label key={format} className="filter-item">
-              <input
-                type="checkbox"
-                className="filter-item__checkbox"
-                checked={selectedFormat.includes(format)}
-                onChange={() => handleFormatChange(format)}
-              />
-              <span>Ebook {format}</span>
-            </label>
-          ))}
+        <span className="filter-group__title">Định dạng Ebook</span>
+        <div className="filter-formats-grid">
+          {FORMAT_FILTERS.map((format) => {
+            const isSelected = selectedFormat.includes(format);
+            return (
+              <button
+                key={format}
+                type="button"
+                className={`filter-format-chip ${isSelected ? "filter-format-chip--active" : ""}`}
+                onClick={() => handleFormatChange(format)}
+              >
+                <span className="filter-format-icon">
+                  {format === "PDF" ? "📄" : format === "EPUB" ? "📘" : "🎧"}
+                </span>
+                <span>{format}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
 
@@ -213,32 +218,28 @@ export default function BrowsePage() {
 
       {/* Rating Filter */}
       <div className="filter-group">
-        <span className="filter-group__title">Đánh giá</span>
-        <div className="filter-list">
-          {[4.5, 4.0, 3.5].map((rating) => (
-            <button
-              key={rating}
-              type="button"
-              className="filter-item"
-              onClick={() => {
-                setMinRating(rating);
-                setCurrentPage(1);
-              }}
-              style={{
-                background: "none",
-                border: "none",
-                textAlign: "left",
-                color:
-                  minRating === rating
-                    ? "var(--accent)"
-                    : "var(--text-secondary)",
-                fontWeight: minRating === rating ? "700" : "normal",
-                cursor: "pointer",
-              }}
-            >
-              <span className="filter-rating-star">★</span> {rating} trở lên
-            </button>
-          ))}
+        <span className="filter-group__title">Đánh giá tối thiểu</span>
+        <div className="filter-ratings-list">
+          {[4.5, 4.0, 3.5].map((rating) => {
+            const isSelected = minRating === rating;
+            return (
+              <button
+                key={rating}
+                type="button"
+                className={`filter-rating-row ${isSelected ? "filter-rating-row--active" : ""}`}
+                onClick={() => {
+                  setMinRating(isSelected ? 0 : rating);
+                  setCurrentPage(1);
+                }}
+              >
+                <span className="filter-rating-stars">
+                  {"★".repeat(Math.floor(rating))}
+                  {rating % 1 !== 0 ? "½" : ""}
+                </span>
+                <span className="filter-rating-label">{rating} trở lên</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </>

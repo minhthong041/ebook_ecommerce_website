@@ -1,0 +1,178 @@
+.library-page {
+  padding: var(--space-xl) 0 0;
+}
+
+.library-hero {
+  display: flex;
+  justify-content: space-between;
+  gap: var(--space-lg);
+  align-items: flex-start;
+  margin-bottom: var(--space-xl);
+}
+
+.library-eyebrow {
+  font-size: 0.85rem;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+
+.library-title {
+  font-family: var(--font-heading);
+  font-size: clamp(2rem, 3vw, 2.8rem);
+  line-height: 1.05;
+  max-width: 720px;
+  margin-bottom: 16px;
+}
+
+.library-sub {
+  color: var(--text-secondary);
+  max-width: 620px;
+  line-height: 1.8;
+}
+
+.library-highlights {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-lg);
+  margin-bottom: var(--space-xl);
+}
+
+.library-card {
+  padding: var(--space-lg);
+  border-radius: var(--radius-xl);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+}
+
+.library-card--highlight {
+  background: linear-gradient(
+    135deg,
+    rgba(79, 70, 229, 0.08),
+    rgba(139, 92, 246, 0.03)
+  );
+}
+
+.library-card--accent {
+  background: rgba(79, 70, 229, 0.06);
+}
+
+.library-card--accent2 {
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.library-card-label {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 10px;
+}
+
+.library-card h2 {
+  font-size: 2.2rem;
+  margin: 0;
+  color: var(--text-primary);
+}
+
+.library-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: var(--space-lg);
+}
+
+.library-book-card {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: var(--space-md);
+  padding: var(--space-lg);
+  border-radius: var(--radius-xl);
+  background: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--border);
+  transition:
+    transform var(--transition),
+    box-shadow var(--transition);
+}
+
+.library-book-card:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-md);
+}
+
+.library-cover {
+  width: 100%;
+  min-height: 180px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(
+    135deg,
+    rgba(79, 70, 229, 0.08),
+    rgba(99, 102, 241, 0.1)
+  );
+}
+
+.library-cover-icon {
+  font-size: 3rem;
+}
+
+.library-book-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.library-book-genre {
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.library-book-card h3 {
+  margin: 0;
+  font-size: 1.2rem;
+}
+
+.library-book-author {
+  color: var(--text-secondary);
+  font-size: 0.95rem;
+}
+
+.library-progress {
+  display: grid;
+  gap: 8px;
+}
+
+.library-progress span {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--bg-elevated);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.progress-fill {
+  height: 100%;
+  background: linear-gradient(135deg, #4f46e5 0%, #9333ea 100%);
+  border-radius: inherit;
+}
+
+@media (max-width: 900px) {
+  .library-hero {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .library-highlights {
+    grid-template-columns: 1fr;
+  }
+}

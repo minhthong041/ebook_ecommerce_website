@@ -150,3 +150,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
 ]
+
+# CORS for Cookies
+CORS_ALLOW_CREDENTIALS = True
+
+# JWT Settings
+from datetime import timedelta
+JWT_SECRET_KEY = config("SECRET_KEY")
+JWT_ACCESS_EXPIRATION = timedelta(minutes=15)
+JWT_REFRESH_EXPIRATION = timedelta(days=7)
