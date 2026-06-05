@@ -90,6 +90,17 @@ export default function ReaderPage() {
 
   const contentRef = useRef(null);
 
+  // CODE THÊM VÀO: State và logic cho Reading Progress
+  const [scrollProgress, setScrollProgress] = useState(0);
+
+  const handleScroll = () => {
+    if (contentRef.current) {
+      const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
+      const progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
+      setScrollProgress(isNaN(progress) ? 0 : progress);
+    }
+  };
+
   // 3. Effects
   useEffect(() => {
     localStorage.setItem("reader_preferences", JSON.stringify(preferences));
@@ -418,6 +429,18 @@ export default function ReaderPage() {
         </div>
       </header>
 
+      
+      <div style={{ width: "100%", height: "4px", backgroundColor: "#e0e0e0", zIndex: 10 }}>
+        <div
+          style={{
+            width: `${scrollProgress}%`,
+            height: "100%",
+            backgroundColor: "var(--primary-color, #007bff)",
+            transition: "width 0.1s ease-out",
+          }}
+        />
+      </div>
+
       {/* BODY LAYOUT */}
       <div className="reader-body">
         {/* SIDEBAR */}
@@ -636,6 +659,7 @@ export default function ReaderPage() {
           <div
             ref={contentRef}
             className="reader-content-viewport"
+            onScroll={handleScroll}
             style={{
               fontFamily: activeFontFamily,
               fontSize: activeFontSizeValue,
