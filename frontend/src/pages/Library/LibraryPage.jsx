@@ -1,4 +1,3 @@
-import React from "react";
 import { Link } from "react-router-dom";
 import "./LibraryPage.css";
 
@@ -9,7 +8,7 @@ const books = [
     author: "Robert C. Martin",
     genre: "Công nghệ",
     progress: 42,
-    icon: "🧠"
+    icon: "🧠",
   },
   {
     id: 2,
@@ -17,7 +16,7 @@ const books = [
     author: "Dale Carnegie",
     genre: "Kỹ năng sống",
     progress: 74,
-    icon: "🤝"
+    icon: "🤝",
   },
   {
     id: 3,
@@ -25,7 +24,7 @@ const books = [
     author: "Napoleon Hill",
     genre: "Kinh doanh",
     progress: 100,
-    icon: "💵"
+    icon: "💵",
   },
   {
     id: 4,
@@ -33,7 +32,7 @@ const books = [
     author: "Stephen Hawking",
     genre: "Khoa học",
     progress: 56,
-    icon: "🌌"
+    icon: "🌌",
   },
 ];
 
@@ -59,11 +58,13 @@ export default function LibraryPage() {
         </article>
         <article className="library-card library-card--accent">
           <p className="library-card-label">Đang đọc</p>
-          <h2>{books.filter(b => b.progress > 0 && b.progress < 100).length}</h2>
+          <h2>
+            {books.filter((b) => b.progress > 0 && b.progress < 100).length}
+          </h2>
         </article>
         <article className="library-card library-card--accent2">
           <p className="library-card-label">Hoàn thành</p>
-          <h2>{books.filter(b => b.progress === 100).length}</h2>
+          <h2>{books.filter((b) => b.progress === 100).length}</h2>
         </article>
       </div>
 
@@ -73,7 +74,11 @@ export default function LibraryPage() {
             key={book.id}
             to={`/reader/${book.id}`}
             className="library-book-card-link"
-            style={{ textDecoration: "none", color: "inherit", display: "grid" }}
+            style={{
+              textDecoration: "none",
+              color: "inherit",
+              display: "grid",
+            }}
           >
             <article className="library-book-card glass-card">
               <div className="library-cover">

@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useMemo, useRef } from "react";
-import { useParams, useNavigate, Link } from "react-router-dom";
+import { useState, useEffect, useMemo, useRef } from "react";
+import { useParams, Link } from "react-router-dom";
 import { BOOKS } from "../../data/bookData";
 import "./ReaderPage.css";
 
@@ -29,16 +29,28 @@ const FONT_SIZES = [
   { id: "xlarge", name: "A++", size: "1.5rem" },
 ];
 
+const createId = () => Date.now();
+
 export default function ReaderPage() {
   const { id } = useParams();
-  const navigate = useNavigate();
   const bookId = Number(id);
 
   // 1. Load book data
   const book = useMemo(() => BOOKS.find((b) => b.id === bookId), [bookId]);
 
   // 2. States
-  const [activeChapterIndex, setActiveChapterIndex] = useState(0);
+  const [activeChapterIndex, setActiveChapterIndex] = useState(() => {
+    const savedProgress = localStorage.getItem(`reader_progress_${bookId}`);
+    if (savedProgress) {
+      try {
+        const progress = JSON.parse(savedProgress);
+        return progress.chapterIndex ?? 0;
+      } catch {
+        return 0;
+      }
+    }
+    return 0;
+  });
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("toc"); // toc, settings, annotations
 
@@ -78,18 +90,6 @@ export default function ReaderPage() {
 
   const contentRef = useRef(null);
 
-  if (!book) {
-    return (
-      <div className="reader-error">
-        <h2>Không tìm thấy sách</h2>
-        <p>Cuốn sách bạn yêu cầu không tồn tại hoặc chưa được mua.</p>
-        <Link to="/library" className="btn btn-primary">
-          Quay lại Thư viện
-        </Link>
-      </div>
-    );
-  }
-
   // 3. Effects
   useEffect(() => {
     localStorage.setItem("reader_preferences", JSON.stringify(preferences));
@@ -109,16 +109,7 @@ export default function ReaderPage() {
     );
   }, [bookmarks, bookId]);
 
-  // Load last read chapter from progress tracking
-  useEffect(() => {
-    const savedProgress = localStorage.getItem(`reader_progress_${bookId}`);
-    if (savedProgress) {
-      const progress = JSON.parse(savedProgress);
-      if (progress.chapterIndex !== undefined) {
-        setActiveChapterIndex(progress.chapterIndex);
-      }
-    }
-  }, [bookId]);
+  // Load last read chapter from progress tracking is handled by the activeChapterIndex initializer above.
 
   // Save current progress on chapter change
   const handleChapterChange = (index) => {
@@ -139,10 +130,19 @@ export default function ReaderPage() {
   };
 
   // 4. Generate dynamic chapter content
-  const activeChapter =
-    book.tableOfContents[activeChapterIndex] || book.tableOfContents[0];
+  const activeChapter = useMemo(() => {
+    return (
+      book?.tableOfContents?.[activeChapterIndex] ||
+      book?.tableOfContents?.[0] ||
+      null
+    );
+  }, [book, activeChapterIndex]);
 
   const chapterParagraphs = useMemo(() => {
+    if (!activeChapter || !book) {
+      return [];
+    }
+
     return [
       `Chào mừng bạn đến với chương "${activeChapter.title}" của cuốn sách "${book.title}". Đây là phần nội dung được hiển thị dưới dạng bản dùng thử mô phỏng trải nghiệm đọc sách thực tế trên BookVerse.`,
       `Trong phần này, tác giả ${book.author} sẽ dẫn dắt chúng ta đi qua những góc nhìn độc đáo liên quan đến đề tài này. Bằng việc kết hợp giữa lý luận lý thuyết và các nghiên cứu điển hình trực quan, người đọc sẽ dễ dàng kết nối lý thuyết vào thực tiễn cuộc sống.`,
@@ -150,7 +150,19 @@ export default function ReaderPage() {
       `Đặc biệt, hệ thống đọc sách thông minh này cho phép bạn tương tác trực tiếp với văn bản. Hãy thử bôi đen bất kỳ đoạn văn bản nào trên màn hình này: một thanh công cụ tô màu (Highlighter) sẽ hiện lên ngay lập tức. Bạn có thể đánh dấu bằng nhiều màu sắc sinh động, hoặc thêm các dòng ghi chú (Notes) để lưu trữ suy nghĩ cá nhân của mình.`,
       `Tất cả các dòng đánh dấu nổi bật và ghi chú này sẽ được tự động tổng hợp đầy đủ trong tab "Đánh dấu & Note" bên trái để bạn dễ dàng quản lý và ôn tập bất cứ lúc nào. Chúc bạn có một hành trình đọc sách thật thú vị và thu hoạch được nhiều kiến thức bổ ích cùng BookVerse!`,
     ];
-  }, [activeChapter.title, book.title, book.author]);
+  }, [activeChapter, book]);
+
+  if (!book) {
+    return (
+      <div className="reader-error">
+        <h2>Không tìm thấy sách</h2>
+        <p>Cuốn sách bạn yêu cầu không tồn tại hoặc chưa được mua.</p>
+        <Link to="/library" className="btn btn-primary">
+          Quay lại Thư viện
+        </Link>
+      </div>
+    );
+  }
 
   // 5. Handling Text Selection
   const handleTextSelection = () => {
@@ -211,7 +223,7 @@ export default function ReaderPage() {
     if (!selectionData) return;
 
     const newAnnotation = {
-      id: Date.now(),
+      id: createId(),
       chapterIndex: activeChapterIndex,
       chapterTitle: activeChapter.title,
       paragraphIndex: selectionData.paragraphIndex,
@@ -230,7 +242,7 @@ export default function ReaderPage() {
     if (!selectionData || !noteText.trim()) return;
 
     const newAnnotation = {
-      id: Date.now(),
+      id: createId(),
       chapterIndex: activeChapterIndex,
       chapterTitle: activeChapter.title,
       paragraphIndex: selectionData.paragraphIndex,
@@ -270,7 +282,7 @@ export default function ReaderPage() {
       );
     } else {
       const newBookmark = {
-        id: Date.now(),
+        id: createId(),
         chapterIndex: activeChapterIndex,
         chapterTitle: activeChapter.title,
         createdAt: new Date().toLocaleDateString("vi-VN"),
