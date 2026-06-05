@@ -11,6 +11,8 @@ import AuthorsPage from "./pages/Authors/AuthorsPage";
 import CartPage from "./pages/Cart/CartPage";
 import NotFoundPage from "./pages/NotFound/NotFoundPage";
 import BookDetailPage from "./pages/BookDetail/BookDetailPage";
+import LibraryPage from "./pages/Library/LibraryPage";
+import ReaderPage from "./pages/Reader/ReaderPage";
 
 // 2. Các trang Logic & Bảo mật (HEAD)
 import Login from "./pages/Login";
@@ -88,7 +90,7 @@ const router = createBrowserRouter([
     element: <AdminLayout pageTitle="Dashboard" />,
     children: [
       { path: "dashboard", element: <ComingSoon page="Dashboard" /> },
-      { path: "library", element: <ComingSoon page="Thư viện của tôi" /> },
+      { path: "library", element: <LibraryPage /> },
       { path: "orders", element: <ComingSoon page="Đơn hàng" /> },
 
       // Thay thế profile bằng Account và bọc trong lớp bảo mật ProtectedRoute
@@ -111,6 +113,11 @@ const router = createBrowserRouter([
       },
       { path: "settings", element: <ComingSoon page="Cài đặt" /> },
     ],
+  },
+  {
+    // ── Standalone Immersive Reader Route ──
+    path: "reader/:id",
+    element: <ReaderPage />,
   },
   {
     // ── 404 Not Found ──

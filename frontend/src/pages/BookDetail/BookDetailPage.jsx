@@ -1,10 +1,26 @@
-﻿import { useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import BookCard from "../../components/BookCard/BookCard";
 import { BOOKS } from "../../data/bookData";
 import "./BookDetailPage.css";
 
-const TABS = ["Mo ta", "Noi dung", "Danh gia"];
+const TABS = ["Mô tả", "Mục lục", "Đánh giá"];
+
+function getAvatarGradient(username) {
+  const gradients = [
+    "linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%)", // Coral/Peach
+    "linear-gradient(135deg, #4E65FF 0%, #92EFFD 100%)", // Blue/Aqua
+    "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)", // Teal/Green
+    "linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%)", // Purple/Indigo
+    "linear-gradient(135deg, #f80759 0%, #bc4e9c 100%)", // Rose/Magenta
+    "linear-gradient(135deg, #F7971E 0%, #FFD200 100%)", // Gold/Amber
+  ];
+  let hash = 0;
+  for (let i = 0; i < username.length; i++) {
+    hash += username.charCodeAt(i);
+  }
+  return gradients[hash % gradients.length];
+}
 
 export default function BookDetailPage() {
   const { id } = useParams();
@@ -26,20 +42,20 @@ export default function BookDetailPage() {
         <div className="container">
           <div className="breadcrumbs">
             <Link to="/" className="breadcrumbs__link">
-              Trang chu
+              Trang chủ
             </Link>
             <span className="breadcrumbs__separator">/</span>
             <Link to="/browse" className="breadcrumbs__link">
-              Thu vien
+              Thư viện
             </Link>
             <span className="breadcrumbs__separator">/</span>
-            <span className="breadcrumbs__current">Khong tim thay sach</span>
+            <span className="breadcrumbs__current">Không tìm thấy sách</span>
           </div>
           <div style={{ padding: "80px 0", textAlign: "center" }}>
-            <h2>Khong tim thay sach</h2>
-            <p>Cuon sach ban tim khong ton tai hoac da bi xoa.</p>
+            <h2>Không tìm thấy sách</h2>
+            <p>Cuốn sách bạn tìm không tồn tại hoặc đã bị xóa.</p>
             <Link to="/browse" className="btn btn-primary">
-              Quay lai Browse
+              Quay lại Browse
             </Link>
           </div>
         </div>
@@ -59,11 +75,11 @@ export default function BookDetailPage() {
       <div className="container">
         <div className="breadcrumbs">
           <Link to="/" className="breadcrumbs__link">
-            Trang chu
+            Trang chủ
           </Link>
           <span className="breadcrumbs__separator">/</span>
           <Link to="/browse" className="breadcrumbs__link">
-            Thu vien
+            Thư viện
           </Link>
           <span className="breadcrumbs__separator">/</span>
           <span className="breadcrumbs__current">{book.title}</span>
@@ -72,9 +88,13 @@ export default function BookDetailPage() {
         <div className="book-detail__main">
           <aside className="book-detail__left">
             <div className="book-detail__cover-container">
+              {/* Spine effect */}
+              <div className="book-cover-spine" />
               {book.coverIcon ? (
-                <div className="book-detail__cover-img" aria-hidden="true">
-                  {book.coverIcon}
+                <div className="book-detail__cover-img-wrapper">
+                  <div className="book-detail__cover-img" aria-hidden="true">
+                    {book.coverIcon}
+                  </div>
                 </div>
               ) : (
                 <img
@@ -84,15 +104,15 @@ export default function BookDetailPage() {
                 />
               )}
               {book.isBestseller && (
-                <span className="book-detail__bestseller-badge">Ban chay</span>
+                <span className="book-detail__bestseller-badge">Bán chạy</span>
               )}
             </div>
             <button
               type="button"
-              className="btn btn-secondary book-detail__preview-btn"
+              className="btn btn-ghost book-detail__preview-btn"
               onClick={() => setPreviewOpen(true)}
             >
-              Xem thu phan dau
+              📖 Xem thử phần đầu
             </button>
           </aside>
 
@@ -101,17 +121,17 @@ export default function BookDetailPage() {
             <h1 className="book-detail__title">{book.title}</h1>
             <div className="book-detail__meta-row">
               <span>
-                Tac gia{" "}
+                Tác giả:{" "}
                 <Link to="/browse" className="book-detail__author-link">
                   {book.author}
                 </Link>
               </span>
               <span className="book-detail__rating-summary">
                 <span className="book-detail__stars">★</span>
-                {book.rating} • {book.reviewsCount} danh gia
+                {book.rating} • {book.reviewsCount} đánh giá
               </span>
               <span>
-                {new Date(book.publishDate).toLocaleDateString("vi-VN")}
+                NXB: {new Date(book.publishDate).toLocaleDateString("vi-VN")}
               </span>
             </div>
 
@@ -134,7 +154,7 @@ export default function BookDetailPage() {
             <p className="book-detail__short-desc">{book.description}</p>
 
             <div className="book-detail__formats-section">
-              <div className="book-detail__formats-title">Hinh thuc doc</div>
+              <div className="book-detail__formats-title">Hình thức đọc khả dụng</div>
               <div className="book-detail__formats-list">
                 {book.formats.map((format) => (
                   <button
@@ -143,7 +163,9 @@ export default function BookDetailPage() {
                     className={`book-detail__format-card${selectedFormat === format ? " book-detail__format-card--active" : ""}`}
                     onClick={() => setSelectedFormat(format)}
                   >
-                    <span className="book-detail__format-icon">📘</span>
+                    <span className="book-detail__format-icon">
+                      {format === "PDF" ? "📄" : format === "EPUB" ? "📘" : "🎧"}
+                    </span>
                     <span className="book-detail__format-name">{format}</span>
                     <span className="book-detail__format-price">
                       {book.price.toLocaleString("vi-VN")}₫
@@ -164,14 +186,14 @@ export default function BookDetailPage() {
               <button
                 type="button"
                 className="btn btn-ghost book-detail__btn-cart"
-                onClick={() => console.log("Them vao gio:", book.title)}
+                onClick={() => console.log("Thêm vào giỏ:", book.title)}
               >
-                Them vao gio
+                Thêm vào giỏ
               </button>
               <button
                 type="button"
                 className={`book-detail__wish-btn${isWishlisted ? " book-detail__wish-btn--active" : ""}`}
-                aria-label="Yeu thich sach"
+                aria-label="Yêu thích sách"
                 onClick={() => setIsWishlisted((prev) => !prev)}
               >
                 ❤
@@ -195,7 +217,7 @@ export default function BookDetailPage() {
           </div>
 
           <div className="book-detail__tab-content">
-            {activeTab === "Mo ta" && (
+            {activeTab === "Mô tả" && (
               <div className="book-detail__tab-pane">
                 <p className="book-detail__desc-text">{book.description}</p>
                 <table className="specs-table">
@@ -205,15 +227,15 @@ export default function BookDetailPage() {
                       <td className="specs-table__value">{book.isbn}</td>
                     </tr>
                     <tr className="specs-table__row">
-                      <td className="specs-table__label">Trang</td>
-                      <td className="specs-table__value">{book.pages}</td>
+                      <td className="specs-table__label">Số trang</td>
+                      <td className="specs-table__value">{book.pages} trang</td>
                     </tr>
                     <tr className="specs-table__row">
-                      <td className="specs-table__label">Nha xuat ban</td>
+                      <td className="specs-table__label">Nhà xuất bản</td>
                       <td className="specs-table__value">{book.publisher}</td>
                     </tr>
                     <tr className="specs-table__row">
-                      <td className="specs-table__label">Ngon ngu</td>
+                      <td className="specs-table__label">Ngôn ngữ</td>
                       <td className="specs-table__value">{book.language}</td>
                     </tr>
                   </tbody>
@@ -221,11 +243,12 @@ export default function BookDetailPage() {
               </div>
             )}
 
-            {activeTab === "Noi dung" && (
+            {activeTab === "Mục lục" && (
               <div className="book-detail__tab-pane">
                 <div className="toc-list">
-                  {book.tableOfContents.map((item) => (
+                  {book.tableOfContents.map((item, index) => (
                     <div key={item.title} className="toc-item">
+                      <span className="toc-item__index">{index + 1}</span>
                       <span className="toc-item__title">{item.title}</span>
                       <span className="toc-item__page">trang {item.page}</span>
                     </div>
@@ -234,13 +257,16 @@ export default function BookDetailPage() {
               </div>
             )}
 
-            {activeTab === "Danh gia" && (
+            {activeTab === "Đánh giá" && (
               <div className="book-detail__tab-pane">
                 <div className="reviews-container">
-                  <div className="reviews-summary">
+                  <div className="reviews-summary glass-card">
                     <div className="reviews-summary__score">{book.rating}</div>
+                    <div className="reviews-summary__stars">
+                      {"★".repeat(Math.floor(book.rating))}
+                    </div>
                     <div className="reviews-summary__total">
-                      tren {book.reviewsCount} luot danh gia
+                      trên {book.reviewsCount} lượt đánh giá
                     </div>
                   </div>
                   <div className="reviews-list">
@@ -251,8 +277,11 @@ export default function BookDetailPage() {
                       >
                         <div className="review-item__header">
                           <div className="review-item__user-info">
-                            <div className="review-item__avatar">
-                              {review.user.slice(0, 2).toUpperCase()}
+                            <div
+                              className="review-item__avatar"
+                              style={{ background: getAvatarGradient(review.user) }}
+                            >
+                              {review.user.slice(0, 1).toUpperCase()}
                             </div>
                             <div>
                               <div className="review-item__username">
@@ -276,7 +305,7 @@ export default function BookDetailPage() {
         </section>
 
         <section className="related-books">
-          <h2 className="related-books__title">Sach lien quan</h2>
+          <h2 className="related-books__title">Sách liên quan có thể bạn thích</h2>
           <div className="book-grid">
             {relatedBooks.map((related) => (
               <Link
@@ -290,7 +319,7 @@ export default function BookDetailPage() {
                   isWishlisted={false}
                   onWishlistToggle={() => {}}
                   onAddToCart={() =>
-                    console.log("Them vao gio:", related.title)
+                    console.log("Thêm vào giỏ:", related.title)
                   }
                 />
               </Link>
@@ -307,7 +336,7 @@ export default function BookDetailPage() {
           />
           <div className="preview-modal__content">
             <div className="preview-modal__header">
-              <div className="preview-modal__title">Xem thu: {book.title}</div>
+              <div className="preview-modal__title">Đọc thử: {book.title}</div>
               <button
                 type="button"
                 className="preview-modal__close"
@@ -318,18 +347,18 @@ export default function BookDetailPage() {
             </div>
             <div className="preview-modal__body">
               <p className="preview-modal__sample-p">
-                "Day la mot phan mo dau mau de ban cam nhan phong cach viet va
-                cach trinh bay cua cuon sach. Noi dung nay chi mang tinh minh
-                hoa."
+                "Đây là một phần mở đầu mẫu để bạn cảm nhận phong cách viết và
+                cách trình bày của cuốn sách. Nội dung này chỉ mang tính minh
+                họa cho trải nghiệm người dùng."
               </p>
               <p className="preview-modal__sample-p">
-                "Voi moi dinh dang, ban co the lua chon doc ebook theo cach phu
-                hop nhat. Hay tan dung bo loc va tim hieu them ve sach trong
-                phan thong tin chi tiet."
+                "Với mỗi định dạng sách mua tại BookVerse, bạn có thể lựa chọn đọc ebook theo cách phù
+                hợp nhất trên mọi trình duyệt web. Hãy tận dụng bộ lọc và tìm hiểu thêm về sách trong
+                phần thông tin chi tiết."
               </p>
               <p className="preview-modal__sample-p">
-                "Chuc ban co trai nghiem doc sach tuyet voi va nhanh chong tim
-                duoc dau sach ung y trong BookVerse."
+                "Chúc bạn có trải nghiệm đọc sách tuyệt vời và nhanh chóng tìm
+                được đầu sách ưng ý trong tủ sách BookVerse."
               </p>
             </div>
             <div className="preview-modal__footer">
@@ -338,7 +367,7 @@ export default function BookDetailPage() {
                 className="btn btn-primary"
                 onClick={() => setPreviewOpen(false)}
               >
-                Dong
+                Đóng lại
               </button>
             </div>
           </div>
