@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { to: "/", label: "Trang chủ", icon: "🏠", end: true },
   { to: "/browse", label: "Khám phá", icon: "🔭" },
   { to: "/authors", label: "Tác giả", icon: "✍️" },
+  { to: "/library", label: "Thư viện", icon: "📚" },
   { to: "/pricing", label: "Premium", icon: "💎" },
 ];
 

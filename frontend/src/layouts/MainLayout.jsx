@@ -1,7 +1,7 @@
-import { Outlet, ScrollRestoration } from 'react-router-dom'
-import Header from '../components/Header/Header'
-import Footer from '../components/Footer/Footer'
-import './layouts.css'
+import { Outlet, ScrollRestoration } from "react-router-dom";
+import Header from "../components/Header/Header";
+import Footer from "../components/Footer/Footer";
+import "./layouts.css";
 
 /**
  * MainLayout – layout chính cho các trang công khai.
@@ -12,10 +12,14 @@ export default function MainLayout() {
     <div className="main-layout">
       <Header />
       <main className="main-layout__content" id="main-content">
-        <Outlet />
+        <div className="main-layout__body">
+          <div className="main-layout__page">
+            <Outlet />
+          </div>
+        </div>
       </main>
       <Footer />
       <ScrollRestoration />
     </div>
-  )
+  );
 }
