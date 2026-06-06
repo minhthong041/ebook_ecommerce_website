@@ -9,8 +9,8 @@
   --reader-bg-hover: #dfceaa;
   --reader-text: #433422;
   --reader-text-secondary: #705e49;
-  --reader-accent: #b7791f;
-  --reader-accent-hover: #975a16;
+  --reader-accent: #B45353;
+  --reader-accent-hover: #923838;
   --reader-border: rgba(67, 52, 34, 0.12);
   --reader-scrollbar-thumb: rgba(67, 52, 34, 0.2);
   --reader-scrollbar-track: rgba(67, 52, 34, 0.05);
@@ -28,8 +28,8 @@
   --reader-bg-hover: #e2e8f0;
   --reader-text: #1a202c;
   --reader-text-secondary: #4a5568;
-  --reader-accent: #3182ce;
-  --reader-accent-hover: #2b6cb0;
+  --reader-accent: #E75B5B;
+  --reader-accent-hover: #B42323;
   --reader-border: rgba(0, 0, 0, 0.1);
   --reader-scrollbar-thumb: rgba(0, 0, 0, 0.15);
   --reader-scrollbar-track: rgba(0, 0, 0, 0.05);
@@ -47,8 +47,8 @@
   --reader-bg-hover: #262a33;
   --reader-text: #e2e8f0;
   --reader-text-secondary: #a0aec0;
-  --reader-accent: #63b3ed;
-  --reader-accent-hover: #4299e1;
+  --reader-accent: #FCA5A5;
+  --reader-accent-hover: #F87171;
   --reader-border: rgba(255, 255, 255, 0.08);
   --reader-scrollbar-thumb: rgba(255, 255, 255, 0.15);
   --reader-scrollbar-track: rgba(255, 255, 255, 0.03);
@@ -68,7 +68,7 @@
   overflow: hidden;
   background-color: var(--reader-bg);
   color: var(--reader-text);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: var(--font-body);
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
@@ -106,8 +106,8 @@
 .reader-header__left {
   display: flex;
   align-items: center;
-  gap: 16px;
-  max-width: 33%;
+  gap: 12px;
+  max-width: 43%;
 }
 
 .reader-back-btn {
@@ -173,10 +173,70 @@
   color: var(--reader-text);
 }
 
+.reader-sidebar-toggle-btn {
+  width: 36px;
+  height: 36px;
+  justify-content: center;
+  padding: 0;
+  border-color: var(--reader-border);
+  background-color: rgba(255, 255, 255, 0.16);
+}
+
+.reader-menu-icon {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 18px;
+}
+
+.reader-menu-icon span {
+  display: block;
+  width: 100%;
+  height: 2px;
+  border-radius: 999px;
+  background-color: currentColor;
+}
+
 .reader-bookmark-btn--active {
   color: var(--reader-accent);
-  background-color: rgba(183, 121, 31, 0.1);
-  border-color: rgba(183, 121, 31, 0.2);
+  background-color: rgba(231, 91, 91, 0.12);
+  border-color: #e11d48;
+  box-shadow: 0 0 0 3px rgba(225, 29, 72, 0.08);
+}
+
+.reader-bookmark-btn {
+  color: #e11d48;
+  border-color: rgba(225, 29, 72, 0.45);
+  padding: 7px 12px;
+  gap: 9px;
+  background-color: rgba(255, 255, 255, 0.22);
+}
+
+.reader-bookmark-btn:hover {
+  color: #be123c;
+  background-color: rgba(225, 29, 72, 0.1);
+  border-color: #be123c;
+}
+
+.reader-bookmark-icon {
+  position: relative;
+  display: inline-block;
+  width: 18px;
+  height: 24px;
+  flex-shrink: 0;
+  background: linear-gradient(180deg, #fb7185 0 18%, #e11d48 18% 58%, #be123c 58% 100%);
+  clip-path: polygon(0 0, 100% 0, 100% 100%, 50% 78%, 0 100%);
+  box-shadow: 0 2px 5px rgba(190, 18, 60, 0.22);
+}
+
+.reader-bookmark-icon::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: rgba(255, 255, 255, 0.24);
 }
 
 .reader-sidebar-toggle-btn--active {
@@ -612,6 +672,17 @@
   font-family: inherit;
 }
 
+.reader-source-note {
+  margin: -4px 0 20px;
+  color: var(--reader-text-secondary);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.reader-source-note--warning {
+  color: var(--reader-accent);
+}
+
 .reader-chapter-separator {
   width: 60px;
   height: 4px;
@@ -779,7 +850,7 @@
   padding: 6px;
   font-size: 0.8rem;
   resize: none;
-  font-family: system-ui, sans-serif;
+  font-family: var(--font-body);
 }
 
 .reader-note-form__input:focus {

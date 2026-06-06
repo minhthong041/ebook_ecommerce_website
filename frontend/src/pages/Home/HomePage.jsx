@@ -1,39 +1,8 @@
+import { useContext, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import axiosClient from '../../api/axiosClient';
+import { AuthContext } from '../../context/AuthContext';
 import './HomePage.css';
-
-const HERO_BOOKS = [
-  {
-    id: 1,
-    icon: '🧠',
-    gradient: '',
-    title: 'Tư duy nhanh và chậm',
-    author: 'Daniel Kahneman',
-    price: '79.000₫',
-    featured: true,
-  },
-  {
-    id: 2,
-    icon: '🚀',
-    gradient: '--2',
-    title: 'Zero to One',
-    author: 'Peter Thiel',
-    price: '65.000₫',
-  },
-  {
-    id: 3,
-    icon: '🌊',
-    gradient: '--3',
-    title: 'Sapiens',
-    author: 'Yuval Noah Harari',
-    price: '89.000₫',
-  },
-];
-
-const STATS = [
-  { value: '50K+', label: 'Đầu sách' },
-  { value: '2M+',  label: 'Độc giả' },
-  { value: '4.9★', label: 'Đánh giá' },
-];
 
 const FEATURES = [
   {
@@ -59,14 +28,78 @@ const FEATURES = [
 ];
 
 const POPULAR_CATEGORIES = [
-  { id: 'technology', label: 'Công nghệ', icon: '💻', count: '12,500+ sách' },
-  { id: 'business', label: 'Kinh doanh', icon: '📈', count: '8,200+ sách' },
-  { id: 'science', label: 'Khoa học', icon: '🌌', count: '5,400+ sách' },
-  { id: 'selfhelp', label: 'Kỹ năng sống', icon: '🌱', count: '9,100+ sách' },
-  { id: 'literature', label: 'Văn học', icon: '📚', count: '6,800+ sách' }
+  { id: 'technology', label: 'Công nghệ', icon: '💻', count: 'Xem danh mục' },
+  { id: 'business', label: 'Kinh doanh', icon: '📈', count: 'Xem danh mục' },
+  { id: 'science', label: 'Khoa học', icon: '🌌', count: 'Xem danh mục' },
+  { id: 'selfhelp', label: 'Kỹ năng sống', icon: '🌱', count: 'Xem danh mục' },
+  { id: 'literature', label: 'Văn học', icon: '📚', count: 'Xem danh mục' }
+];
+
+const formatCurrency = (value) =>
+  `${new Intl.NumberFormat('vi-VN').format(Number(value || 0))}₫`;
+
+const getApiResults = (response) => {
+  if (Array.isArray(response)) {
+    return { count: response.length, results: response };
+  }
+  return {
+    count: response?.count ?? response?.results?.length ?? 0,
+    results: response?.results ?? [],
+  };
+};
+
+const mapHeroBook = (book, index) => ({
+  id: book.id,
+  icon: '📘',
+  gradient: index === 0 ? '' : `--${index + 1}`,
+  title: book.title,
+  author:
+    book.authors?.map((author) => author.full_name).filter(Boolean).join(', ') ||
+    book.publisher?.name ||
+    'Ebook',
+  price: formatCurrency(book.price),
+  coverUrl: book.cover_url || '',
+});
+
+const buildStats = (catalogCount) => [
+  { value: String(catalogCount), label: 'Đầu sách hiện có' },
+  { value: 'PDF', label: 'Đọc và tải file' },
+  { value: 'EPUB', label: 'Hỗ trợ ebook' },
 ];
 
 export default function HomePage() {
+  const { isAuthenticated } = useContext(AuthContext);
+  const [heroBooks, setHeroBooks] = useState([]);
+  const [catalogCount, setCatalogCount] = useState(0);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    axiosClient
+      .get('/books/', { params: { page_size: 3, ordering: '-id' } })
+      .then((response) => {
+        if (isCancelled) {
+          return;
+        }
+
+        const { count, results } = getApiResults(response);
+        setCatalogCount(count);
+        setHeroBooks(results.map(mapHeroBook));
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setCatalogCount(0);
+          setHeroBooks([]);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  const stats = buildStats(catalogCount);
+
   return (
     <div className="home-page-container">
       {/* Hero Section */}
@@ -75,7 +108,7 @@ export default function HomePage() {
           {/* Left – Text content */}
           <div className="home-hero__content">
             <span className="home-hero__eyebrow">
-              ✨ Nền tảng ebook #1 Việt Nam
+              ✨ Nền tảng ebook Readify
             </span>
 
             <h1 className="home-hero__title" id="hero-title">
@@ -84,21 +117,24 @@ export default function HomePage() {
             </h1>
 
             <p className="home-hero__description">
-              Khám phá hàng chục nghìn đầu ebook chất lượng cao. Đọc mọi lúc, mọi nơi,
-              trên mọi thiết bị. Tải về đọc offline và chia sẻ với gia đình.
+              Khám phá catalog ebook của cửa hàng. Đọc mọi lúc, mọi nơi,
+              trên mọi thiết bị và tải các định dạng ebook đã sở hữu.
             </p>
 
             <div className="home-hero__actions">
               <Link to="/browse" className="btn btn-primary home-hero__btn-primary">
                 🔭 Khám phá ngay
               </Link>
-              <a href="#featured" className="home-hero__btn-secondary">
-                ▶ Xem demo
-              </a>
+              <Link
+                to={isAuthenticated ? "/account" : "/login"}
+                className="home-hero__btn-secondary"
+              >
+                {isAuthenticated ? "👤 Hồ sơ cá nhân" : "🔐 Đăng nhập"}
+              </Link>
             </div>
 
             <div className="home-hero__stats">
-              {STATS.map((stat) => (
+              {stats.map((stat) => (
                 <div key={stat.label}>
                   <div className="home-hero__stat-value">{stat.value}</div>
                   <div className="home-hero__stat-label">{stat.label}</div>
@@ -108,23 +144,36 @@ export default function HomePage() {
           </div>
 
           {/* Right – Book stack visual */}
-          <div className="home-hero__visual" aria-hidden="true">
-            <div className="home-hero__book-stack">
-              {HERO_BOOKS.map((book) => (
-                <div
+          <div className="home-hero__visual" aria-label="Sách mới trong catalog">
+            <div className={`home-hero__book-stack ${heroBooks.length ? '' : 'home-hero__book-stack--empty'}`}>
+              {heroBooks.length ? (
+                heroBooks.map((book) => (
+                <Link
                   key={book.id}
                   className="home-hero__book-card"
+                  to={`/book/${book.id}`}
                 >
                   <div className={`home-hero__book-cover home-hero__book-cover${book.gradient || ''}`}>
-                    {book.icon}
+                    {book.coverUrl ? <img src={book.coverUrl} alt="" /> : book.icon}
                   </div>
                   <div className="home-hero__book-info">
                     <div className="home-hero__book-title">{book.title}</div>
                     <div className="home-hero__book-author">{book.author}</div>
                     <div className="home-hero__book-price">{book.price}</div>
                   </div>
+                </Link>
+                ))
+              ) : (
+                <div className="home-hero__empty-card">
+                  <div className="home-hero__empty-icon">📚</div>
+                  <div>
+                    <div className="home-hero__book-title">Chưa có sách nào</div>
+                    <div className="home-hero__book-author">
+                      Sách upload mới sẽ xuất hiện tại đây.
+                    </div>
+                  </div>
                 </div>
-              ))}
+              )}
             </div>
           </div>
         </div>
@@ -134,7 +183,7 @@ export default function HomePage() {
       <section className="home-features container" id="featured">
         <div className="section-header">
           <span className="section-eyebrow">Trải nghiệm khác biệt</span>
-          <h2 className="section-title">Tại sao nên đọc sách tại BookVerse?</h2>
+          <h2 className="section-title">Tại sao nên đọc sách tại Readify?</h2>
           <p className="section-subtitle">Chúng tôi mang lại giải pháp đọc sách điện tử tối ưu nhất cho thói quen hàng ngày của bạn.</p>
         </div>
 

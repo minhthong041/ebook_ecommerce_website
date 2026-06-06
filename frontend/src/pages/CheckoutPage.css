@@ -20,18 +20,18 @@
 /* Phần Form điền thông tin */
 .checkout-form-section {
   flex: 3;
-  background: #fff;
+  background: var(--bg-surface);
   padding: 24px;
   border-radius: 8px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-  border: 1px solid #eee;
+  border: 1px solid var(--border);
 }
 
 .checkout-form-section h3 {
   font-size: 1.25rem;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border);
 }
 
 .form-group {
@@ -49,18 +49,19 @@
 .form-group input,
 .form-group textarea {
   padding: 12px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border);
   border-radius: 6px;
   font-size: 1rem;
   transition: border-color 0.2s;
-
+  color: var(--text-primary);
+  background: var(--bg-elevated);
   resize: none;
 }
 
 .form-group input:focus,
 .form-group textarea:focus {
   outline: none;
-  border-color: #6366f1; /* Màu chủ đạo của bạn */
+  border-color: var(--accent);
 }
 
 /* Nút đặt hàng dùng lại class btn btn-primary của hệ thống */
@@ -71,27 +72,182 @@
   margin-top: 10px;
 }
 
+.payment-methods {
+  margin: 22px 0;
+}
+
+.payment-method-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.payment-method-card {
+  display: grid;
+  grid-template-columns: auto 36px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.payment-method-card:hover,
+.payment-method-card--active {
+  border-color: var(--border-accent);
+  background: rgba(231, 91, 91, 0.08);
+}
+
+.payment-method-card input {
+  accent-color: var(--accent);
+}
+
+.payment-method-card__icon {
+  width: 36px;
+  height: 36px;
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-sm);
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+}
+
+.payment-method-card strong,
+.payment-method-card small {
+  display: block;
+}
+
+.payment-method-card small {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  line-height: 1.45;
+}
+
+.card-payment-panel,
+.bank-transfer-panel {
+  margin-bottom: 18px;
+  padding: 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-elevated);
+}
+
+.checkout-alert {
+  margin-bottom: 14px;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  background: rgba(245, 158, 11, 0.1);
+  color: #92400e;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.checkout-card-row {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.demo-card-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: fit-content;
+  margin-bottom: 14px;
+  padding: 10px 16px;
+  border: 1px solid var(--border-accent);
+  border-radius: 999px;
+  color: var(--accent);
+  background: rgba(231, 91, 91, 0.08);
+  font-weight: 800;
+  cursor: pointer;
+  transition: all var(--transition);
+}
+
+.demo-card-button:hover {
+  transform: translateY(-1px);
+  background: rgba(231, 91, 91, 0.14);
+}
+
+.bank-transfer-panel h4 {
+  margin-bottom: 12px;
+  font-size: 1rem;
+}
+
+.bank-transfer-status {
+  margin: 0 0 12px;
+  color: var(--text-secondary);
+  font-weight: 700;
+}
+
+.vietqr-preview {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-surface);
+}
+
+.vietqr-preview img {
+  width: min(260px, 100%);
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+
+.vietqr-preview span {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  text-align: center;
+}
+
+.bank-info-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.bank-info-row span {
+  color: var(--text-secondary);
+}
+
+.bank-transfer-panel p {
+  margin-top: 12px;
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+}
+
 /* Phần tóm tắt đơn hàng */
 .checkout-summary-section {
   flex: 2;
-  background: #fafafa;
+  background: var(--bg-surface);
   padding: 24px;
   border-radius: 8px;
-  border: 1px solid #eaeaea;
+  border: 1px solid var(--border);
 }
 
 .checkout-summary-section h3 {
   font-size: 1.25rem;
   margin-bottom: 20px;
   padding-bottom: 10px;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border);
 }
 
 .summary-items {
   list-style: none;
   padding: 0;
   margin: 0 0 20px 0;
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 20px;
 }
 
@@ -99,22 +255,22 @@
   display: flex;
   justify-content: space-between;
   margin-bottom: 12px;
-  color: #555;
+  color: var(--text-secondary);
 }
 
 .summary-item .item-qty {
   font-weight: 600;
-  color: #888;
+  color: var(--text-muted);
   margin-left: 5px;
 }
 
 .summary-item .item-price {
   font-weight: 500;
-  color: #333;
+  color: var(--text-primary);
 }
 
 .summary-calc {
-  border-bottom: 1px solid #eee;
+  border-bottom: 1px solid var(--border);
   padding-bottom: 16px;
   margin-bottom: 16px;
 }
@@ -123,7 +279,7 @@
   display: flex;
   justify-content: space-between;
   margin-bottom: 8px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .summary-total {
@@ -132,6 +288,35 @@
   font-size: 1.25rem;
   font-weight: 700;
   color: #e53e3e;
+}
+
+.checkout-empty {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 40px 24px;
+  text-align: center;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.checkout-empty h3 {
+  margin-bottom: 8px;
+  font-size: 1.25rem;
+}
+
+.checkout-empty p {
+  margin-bottom: 18px;
+  color: var(--text-secondary);
+}
+
+.checkout-error {
+  margin: 0 0 14px;
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: #991B1B;
+  background: rgba(220, 38, 38, 0.08);
+  border: 1px solid rgba(220, 38, 38, 0.22);
+  font-weight: 700;
 }
 
 /* Reponsive cho điện thoại */
@@ -143,5 +328,10 @@
   .checkout-summary-section {
     flex: 1;
     width: 100%;
+  }
+
+  .payment-method-grid,
+  .checkout-card-row {
+    grid-template-columns: 1fr;
   }
 }

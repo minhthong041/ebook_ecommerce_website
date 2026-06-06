@@ -11,7 +11,7 @@
   border-radius: var(--radius-lg);
   background: linear-gradient(
     180deg,
-    rgba(79, 70, 229, 0.08),
+    rgba(231, 91, 91, 0.08),
     rgba(255, 255, 255, 0.9)
   );
   border: 1px solid var(--border-accent);
@@ -99,7 +99,7 @@
   background: var(--gradient-primary);
   color: #ffffff;
   border-color: transparent;
-  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.2);
+  box-shadow: 0 4px 10px rgba(231, 91, 91, 0.2);
 }
 
 .cart-steps__line--active {
@@ -179,6 +179,13 @@
   font-size: 1.6rem;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   border: 1px solid var(--border);
+}
+
+.cart-row__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
 }
 
 .cart-row__meta {

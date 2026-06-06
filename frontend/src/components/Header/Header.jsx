@@ -1,33 +1,71 @@
-import { useState, useEffect, useRef } from "react";
+import { useContext, useState, useEffect, useMemo, useRef } from "react";
 import { NavLink, Link, useNavigate } from "react-router-dom";
 import CartDrawer from "../CartDrawer/CartDrawer";
-import { CART_ITEMS } from "../../data/cartData";
+import { AuthContext } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
+import { usePreferences } from "../../context/usePreferences";
 import "./Header.css";
 
 const NAV_LINKS = [
-  { to: "/", label: "Trang chủ", icon: "🏠", end: true },
-  { to: "/browse", label: "Khám phá", icon: "🔭" },
-  { to: "/authors", label: "Tác giả", icon: "✍️" },
-  { to: "/library", label: "Thư viện", icon: "📚" },
-  { to: "/pricing", label: "Premium", icon: "💎" },
+  { to: "/", labelKey: "app.home", icon: "🏠", end: true },
+  { to: "/browse", labelKey: "app.browse", icon: "🔭" },
+  { to: "/wishlist", labelKey: "app.wishlist", icon: "❤" },
+  { to: "/library", labelKey: "app.library", icon: "📚" },
+  { to: "/pricing", labelKey: "app.premium", icon: "💎" },
 ];
 
 const DROPDOWN_ITEMS = [
-  { icon: "📚", label: "Thư viện của tôi", to: "/library" },
-  { icon: "📦", label: "Đơn hàng", to: "/orders" },
-  { icon: "👤", label: "Hồ sơ cá nhân", to: "/profile" },
-  { icon: "⚙️", label: "Cài đặt", to: "/settings" },
+  { icon: "❤", labelKey: "app.wishlist", to: "/wishlist" },
+  { icon: "📚", labelKey: "app.library", to: "/library" },
+  { icon: "📦", labelKey: "app.orders", to: "/orders" },
+  { icon: "👤", labelKey: "app.personalProfile", to: "/profile" },
+  { icon: "⚙️", labelKey: "app.settings", to: "/settings" },
 ];
 
+function getAvatarUrl(user) {
+  if (!user?.avatar_url) {
+    return "";
+  }
+
+  if (typeof user.avatar_url === "string") {
+    return user.avatar_url;
+  }
+
+  return user.avatar_url.url || "";
+}
+
 export default function Header() {
+  const { isAuthenticated, user, logout } = useContext(AuthContext);
+  const { t } = usePreferences();
+  const {
+    items: cartItems,
+    itemCount,
+    isLoading: isCartLoading,
+    removeFromCart,
+  } = useCart();
   const [scrolled, setScrolled] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
   const [cartDrawerOpen, setCartDrawerOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchValue, setSearchValue] = useState("");
-  const [cartItems, setCartItems] = useState(CART_ITEMS);
   const userMenuRef = useRef(null);
   const navigate = useNavigate();
+  const displayName = user?.full_name || user?.username || "Người dùng";
+  const avatarUrl = getAvatarUrl(user);
+  const avatarInitials = displayName
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  const translatedNavLinks = useMemo(
+    () => NAV_LINKS.map((link) => ({ ...link, label: t(link.labelKey) })),
+    [t],
+  );
+  const translatedDropdownItems = useMemo(
+    () => DROPDOWN_ITEMS.map((item) => ({ ...item, label: t(item.labelKey) })),
+    [t],
+  );
 
   // Scroll detection
   useEffect(() => {
@@ -64,18 +102,15 @@ export default function Header() {
     }
   };
 
-  const handleChangeQuantity = (itemId, newQuantity) => {
-    setCartItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === itemId
-          ? { ...item, quantity: Math.max(1, newQuantity) }
-          : item,
-      ),
-    );
+  const handleRemove = async (itemId) => {
+    await removeFromCart(itemId);
   };
 
-  const handleRemove = (itemId) => {
-    setCartItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
+  const handleLogout = async () => {
+    setUserMenuOpen(false);
+    setMobileDrawerOpen(false);
+    await logout();
+    navigate("/");
   };
 
   const closeMobileDrawer = () => setMobileDrawerOpen(false);
@@ -89,17 +124,17 @@ export default function Header() {
           <Link
             to="/"
             className="header__logo"
-            aria-label="BookVerse – Trang chủ"
+            aria-label="Readify – Trang chủ"
           >
             <div className="header__logo-icon" aria-hidden="true">
-              📖
+              <img src="/logo.svg" alt="" className="header__logo-img" />
             </div>
-            <span className="header__logo-text">BookVerse</span>
+            <span className="header__logo-text">Readify</span>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="header__nav" aria-label="Điều hướng chính">
-            {NAV_LINKS.map((link) => (
+            {translatedNavLinks.map((link) => (
               <NavLink
                 key={link.to}
                 to={link.to}
@@ -126,7 +161,7 @@ export default function Header() {
               id="header-search"
               type="search"
               className="header__search-input"
-              placeholder="Tìm ebook, tác giả..."
+              placeholder={t("app.searchPlaceholder")}
               value={searchValue}
               onChange={(e) => setSearchValue(e.target.value)}
               aria-label="Tìm kiếm ebook"
@@ -146,70 +181,79 @@ export default function Header() {
               🛒
               <span
                 className="badge"
-                aria-label={`${cartItems.reduce((sum, item) => sum + item.quantity, 0)} sản phẩm trong giỏ`}
+                aria-label={`${itemCount} sản phẩm trong giỏ`}
               >
-                {cartItems.reduce((sum, item) => sum + item.quantity, 0)}
+                {itemCount}
               </span>
             </button>
 
-            {/* User dropdown */}
-            <div
-              className={`header__user${userMenuOpen ? " header__user--open" : ""}`}
-              ref={userMenuRef}
-            >
-              <button
-                type="button"
-                className="header__avatar-btn"
-                onClick={() => setUserMenuOpen((v) => !v)}
-                aria-haspopup="true"
-                aria-expanded={userMenuOpen}
-                id="user-menu-btn"
+            {isAuthenticated ? (
+              <div
+                className={`header__user${userMenuOpen ? " header__user--open" : ""}`}
+                ref={userMenuRef}
               >
-                <div className="header__avatar" aria-hidden="true">
-                  BV
-                </div>
-                <span className="header__avatar-name">Người dùng</span>
-                <span className="header__avatar-caret" aria-hidden="true">
-                  ▼
-                </span>
-              </button>
-
-              {userMenuOpen && (
-                <div
-                  className="header__dropdown"
-                  role="menu"
-                  aria-labelledby="user-menu-btn"
+                <button
+                  type="button"
+                  className="header__avatar-btn"
+                  onClick={() => setUserMenuOpen((v) => !v)}
+                  aria-haspopup="true"
+                  aria-expanded={userMenuOpen}
+                  id="user-menu-btn"
                 >
-                  {DROPDOWN_ITEMS.map((item) => (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      className="header__dropdown-item"
-                      role="menuitem"
-                      onClick={() => setUserMenuOpen(false)}
-                    >
-                      <span className="header__dropdown-icon">{item.icon}</span>
-                      {item.label}
-                    </Link>
-                  ))}
-                  <div className="header__dropdown-divider" />
-                  <button
-                    type="button"
-                    className="header__dropdown-item header__dropdown-item--danger"
-                    role="menuitem"
-                    onClick={() => setUserMenuOpen(false)}
-                  >
-                    <span className="header__dropdown-icon">🚪</span>
-                    Đăng xuất
-                  </button>
-                </div>
-              )}
-            </div>
+                  <div className="header__avatar" aria-hidden="true">
+                    {avatarUrl ? (
+                      <img src={avatarUrl} alt="" className="header__avatar-img" />
+                    ) : (
+                      avatarInitials
+                    )}
+                  </div>
+                  <span className="header__avatar-name">{displayName}</span>
+                  <span className="header__avatar-caret" aria-hidden="true">
+                    ▼
+                  </span>
+                </button>
 
-            {/* Premium CTA */}
-            <Link to="/pricing" className="btn btn-primary header__premium-btn">
-              ✨ Premium
-            </Link>
+                {userMenuOpen && (
+                  <div
+                    className="header__dropdown"
+                    role="menu"
+                    aria-labelledby="user-menu-btn"
+                  >
+                    {translatedDropdownItems.map((item) => (
+                      <Link
+                        key={item.to}
+                        to={item.to}
+                        className="header__dropdown-item"
+                        role="menuitem"
+                        onClick={() => setUserMenuOpen(false)}
+                      >
+                        <span className="header__dropdown-icon">{item.icon}</span>
+                        {item.label}
+                      </Link>
+                    ))}
+                    <div className="header__dropdown-divider" />
+                    <button
+                      type="button"
+                      className="header__dropdown-item header__dropdown-item--danger"
+                      role="menuitem"
+                      onClick={handleLogout}
+                    >
+                      <span className="header__dropdown-icon">🚪</span>
+                      {t("app.logout")}
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <div className="header__auth-actions">
+                <Link to="/login" className="btn btn-ghost header__auth-btn">
+                  {t("app.login")}
+                </Link>
+                <Link to="/register" className="btn btn-primary header__auth-btn">
+                  {t("app.register")}
+                </Link>
+              </div>
+            )}
 
             {/* Hamburger */}
             <button
@@ -239,8 +283,8 @@ export default function Header() {
       <CartDrawer
         isOpen={cartDrawerOpen}
         items={cartItems}
+        isLoading={isCartLoading}
         onClose={closeCartDrawer}
-        onChangeQuantity={handleChangeQuantity}
         onRemove={handleRemove}
       />
 
@@ -252,8 +296,10 @@ export default function Header() {
       >
         <div className="header__drawer-header">
           <Link to="/" className="header__logo" onClick={closeMobileDrawer}>
-            <div className="header__logo-icon">📖</div>
-            <span className="header__logo-text">BookVerse</span>
+            <div className="header__logo-icon" aria-hidden="true">
+              <img src="/logo.svg" alt="" className="header__logo-img" />
+            </div>
+            <span className="header__logo-text">Readify</span>
           </Link>
           <button
             type="button"
@@ -278,7 +324,7 @@ export default function Header() {
             id="drawer-search"
             type="search"
             className="header__drawer-search-input"
-            placeholder="Tìm ebook, tác giả..."
+            placeholder={t("app.searchPlaceholder")}
             value={searchValue}
             onChange={(e) => setSearchValue(e.target.value)}
             aria-label="Tìm kiếm ebook (mobile)"
@@ -290,7 +336,7 @@ export default function Header() {
           className="header__drawer-nav"
           aria-label="Điều hướng chính (mobile)"
         >
-          {NAV_LINKS.map((link) => (
+          {translatedNavLinks.map((link) => (
             <NavLink
               key={link.to}
               to={link.to}
@@ -314,17 +360,47 @@ export default function Header() {
             style={{ justifyContent: "center" }}
             onClick={closeMobileDrawer}
           >
-            🛒 Giỏ hàng (
-            {cartItems.reduce((sum, item) => sum + item.quantity, 0)})
+            🛒 {t("app.cart")} ({itemCount})
           </Link>
-          <Link
-            to="/pricing"
-            className="btn btn-primary"
-            style={{ justifyContent: "center" }}
-            onClick={closeMobileDrawer}
-          >
-            ✨ Nâng lên Premium
-          </Link>
+          {isAuthenticated ? (
+            <>
+              <Link
+                to="/profile"
+                className="btn btn-primary"
+                style={{ justifyContent: "center" }}
+                onClick={closeMobileDrawer}
+              >
+                👤 {t("app.personalProfile")}
+              </Link>
+              <button
+                type="button"
+                className="btn btn-ghost"
+                style={{ justifyContent: "center" }}
+                onClick={handleLogout}
+              >
+                🚪 {t("app.logout")}
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                to="/login"
+                className="btn btn-ghost"
+                style={{ justifyContent: "center" }}
+                onClick={closeMobileDrawer}
+              >
+                🔐 {t("app.login")}
+              </Link>
+              <Link
+                to="/register"
+                className="btn btn-primary"
+                style={{ justifyContent: "center" }}
+                onClick={closeMobileDrawer}
+              >
+                {t("app.register")}
+              </Link>
+            </>
+          )}
         </div>
       </aside>
     </>

@@ -1,26 +1,51 @@
-import { useState, useMemo } from "react";
-import { Link } from "react-router-dom";
+import { useContext, useEffect, useMemo, useState } from "react";
+import { Link, useNavigate } from "react-router-dom";
 import BookCard from "../../components/BookCard/BookCard";
 import CategoryFilter from "../../components/CategoryFilter/CategoryFilter";
-import { BOOKS } from "../../data/bookData";
+import axiosClient from "../../api/axiosClient";
+import { useCart } from "../../context/CartContext";
+import { AuthContext } from "../../context/AuthContext";
 import "./BrowsePage.css";
 
-const MOCK_BOOKS = BOOKS;
+function mapApiBook(book) {
+  const price = Number(book.price || 0);
+  const authors = book.authors || [];
+  const categories = book.categories || [];
+  const formats = book.format_labels || [];
 
-const CATEGORY_FILTERS = [
-  { value: "technology", label: "Công nghệ", count: 2 },
-  { value: "business", label: "Kinh doanh", count: 2 },
-  { value: "science", label: "Khoa học", count: 2 },
-  { value: "selfhelp", label: "Kỹ năng sống", count: 1 },
-  { value: "literature", label: "Văn học", count: 1 },
-];
-
-const FORMAT_FILTERS = ["PDF", "EPUB", "AUDIO"];
+  return {
+    id: book.id,
+    title: book.title,
+    author:
+      authors.map((author) => author.full_name).filter(Boolean).join(", ") ||
+      "Chưa cập nhật",
+    categoryIds: categories.map((category) => String(category.id)),
+    categoryLabel:
+      categories.map((category) => category.name).filter(Boolean).join(", ") ||
+      "Chưa phân loại",
+    price,
+    originalPrice: price,
+    rating: Number(book.average_rating || 0),
+    reviewsCount: Number(book.review_count || 0),
+    formats,
+    coverUrl: book.cover_url,
+    coverIcon: book.cover_url ? "" : "📚",
+    isBestseller: false,
+    isActive: book.is_active !== false,
+    publishDate: book.year_of_publication
+      ? `${book.year_of_publication}-01-01`
+      : "1970-01-01",
+    description: book.description,
+  };
+}
 
 export default function BrowsePage() {
+  const navigate = useNavigate();
+  const { addToCart } = useCart();
+  const { isAuthenticated, isAuthReady } = useContext(AuthContext);
   const [search, setSearch] = useState("");
   const [selectedCats, setSelectedCats] = useState([]);
-  const [selectedFormat, setSelectedFormat] = useState([]);
+  const [includePurchased, setIncludePurchased] = useState(false);
   const [minPrice, setMinPrice] = useState("");
   const [maxPrice, setMaxPrice] = useState("");
   const [minRating, setMinRating] = useState(0);
@@ -29,8 +54,100 @@ export default function BrowsePage() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [wishlist, setWishlist] = useState([]);
+  const [books, setBooks] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
+  const [cartNotice, setCartNotice] = useState("");
+  const [cartError, setCartError] = useState("");
+  const [purchasedBookIds, setPurchasedBookIds] = useState(() => new Set());
+  const [pendingBookIds, setPendingBookIds] = useState(() => new Set());
 
   const itemsPerPage = 6;
+
+  useEffect(() => {
+    const loadBooksTimer = window.setTimeout(async () => {
+      setIsLoading(true);
+      setLoadError("");
+      try {
+        const response = await axiosClient.get("/books/", {
+          params: { page_size: 100 },
+        });
+        const apiBooks = response.results || response;
+        setBooks(Array.isArray(apiBooks) ? apiBooks.map(mapApiBook) : []);
+      } catch {
+        setLoadError("Không thể tải catalog sách từ API.");
+      } finally {
+        setIsLoading(false);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(loadBooksTimer);
+  }, []);
+
+  useEffect(() => {
+    if (!isAuthReady || !isAuthenticated) {
+      const clearLibraryTimer = window.setTimeout(() => {
+        setPurchasedBookIds(new Set());
+        setPendingBookIds(new Set());
+        setWishlist([]);
+      }, 0);
+      return () => window.clearTimeout(clearLibraryTimer);
+    }
+
+    let isMounted = true;
+    const loadUserStateTimer = window.setTimeout(async () => {
+      try {
+        const [libraryResponse, ordersResponse, wishlistResponse] = await Promise.all([
+          axiosClient.get("/library/"),
+          axiosClient.get("/orders/", { params: { status: "pending" } }),
+          axiosClient.get("/wishlists/"),
+        ]);
+        const purchasedIds = new Set(
+          (Array.isArray(libraryResponse) ? libraryResponse : [])
+            .flatMap((library) => library.items || [])
+            .map((item) => Number(item.book_id))
+            .filter(Boolean),
+        );
+        const pendingIds = new Set(
+          (Array.isArray(ordersResponse) ? ordersResponse : [])
+            .flatMap((order) => order.items || [])
+            .map((item) => Number(item.book_id))
+            .filter(Boolean),
+        );
+        if (isMounted) {
+          setPurchasedBookIds(purchasedIds);
+          setPendingBookIds(pendingIds);
+          setWishlist((wishlistResponse.book_ids || []).map(Number));
+        }
+      } catch {
+        if (isMounted) {
+          setPurchasedBookIds(new Set());
+          setPendingBookIds(new Set());
+        }
+      }
+    }, 0);
+
+    return () => {
+      isMounted = false;
+      window.clearTimeout(loadUserStateTimer);
+    };
+  }, [isAuthReady, isAuthenticated]);
+
+  const categoryFilters = useMemo(() => {
+    const categoryMap = new Map();
+    books.forEach((book) => {
+      book.categoryIds.forEach((categoryId, index) => {
+        const label = book.categoryLabel.split(", ")[index] || "Chưa phân loại";
+        const current = categoryMap.get(categoryId);
+        categoryMap.set(categoryId, {
+          value: categoryId,
+          label,
+          count: (current?.count || 0) + 1,
+        });
+      });
+    });
+    return Array.from(categoryMap.values());
+  }, [books]);
 
   // Handlers for Filters
   const handleCatChange = (catValue) => {
@@ -42,25 +159,88 @@ export default function BrowsePage() {
     setCurrentPage(1);
   };
 
-  const handleFormatChange = (formatVal) => {
-    setSelectedFormat((prev) =>
-      prev.includes(formatVal)
-        ? prev.filter((f) => f !== formatVal)
-        : [...prev, formatVal],
+  const toggleWishlist = async (id) => {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+
+    const isWishlisted = wishlist.includes(id);
+    setWishlist((prev) =>
+      isWishlisted ? prev.filter((item) => item !== id) : [...prev, id],
     );
-    setCurrentPage(1);
+    setCartNotice("");
+    setCartError("");
+    try {
+      if (isWishlisted) {
+        await axiosClient.delete(`/wishlists/${id}/`);
+        setCartNotice("Đã bỏ sách khỏi danh sách yêu thích.");
+      } else {
+        await axiosClient.post("/wishlists/", { book_id: id });
+        setCartNotice("Đã thêm sách vào danh sách yêu thích.");
+      }
+    } catch (error) {
+      setWishlist((prev) =>
+        isWishlisted ? [...prev, id] : prev.filter((item) => item !== id),
+      );
+      setCartError(
+        error.response?.data?.detail ||
+          "Không thể cập nhật danh sách yêu thích.",
+      );
+    }
   };
 
-  const toggleWishlist = (id) => {
-    setWishlist((prev) =>
-      prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id],
-    );
+  const handleAddToCart = async (book) => {
+    if (!book.isActive) {
+      setCartNotice("");
+      setCartError(`"${book.title}" hiện không khả dụng.`);
+      return;
+    }
+
+    if (book.isPurchased) {
+      setCartNotice(`"${book.title}" đã có trong thư viện của bạn.`);
+      setCartError("");
+      return;
+    }
+
+    if (book.hasPendingOrder) {
+      setCartNotice("");
+      setCartError(`"${book.title}" đang có đơn chờ thanh toán.`);
+      return;
+    }
+
+    setCartNotice("");
+    setCartError("");
+    try {
+      const result = await addToCart(book);
+      if (result.status === "duplicate") {
+        setCartNotice(result.message);
+      } else {
+        setCartNotice(`Đã thêm "${book.title}" vào giỏ hàng.`);
+      }
+    } catch (error) {
+      if (error.code === "LOGIN_REQUIRED") {
+        navigate("/login");
+        return;
+      }
+      setCartError(error.message || "Không thể thêm sách vào giỏ hàng.");
+    }
+  };
+
+  const handleOpenBook = (event, book) => {
+    if (book.isActive) {
+      return;
+    }
+
+    event.preventDefault();
+    setCartNotice("");
+    setCartError(`"${book.title}" hiện không khả dụng.`);
   };
 
   const handleResetFilters = () => {
     setSearch("");
     setSelectedCats([]);
-    setSelectedFormat([]);
+    setIncludePurchased(false);
     setMinPrice("");
     setMaxPrice("");
     setMinRating(0);
@@ -74,7 +254,15 @@ export default function BrowsePage() {
 
   // Filter and Sort Logic
   const filteredBooks = useMemo(() => {
-    return MOCK_BOOKS.filter((book) => {
+    return books.map((book) => ({
+      ...book,
+      isPurchased: purchasedBookIds.has(book.id),
+      hasPendingOrder: pendingBookIds.has(book.id),
+    })).filter((book) => {
+      if (!includePurchased && book.isPurchased) {
+        return false;
+      }
+
       // Search check
       if (search.trim()) {
         const query = search.toLowerCase();
@@ -84,14 +272,11 @@ export default function BrowsePage() {
       }
 
       // Categories check
-      if (selectedCats.length > 0 && !selectedCats.includes(book.category)) {
+      if (
+        selectedCats.length > 0 &&
+        !book.categoryIds.some((categoryId) => selectedCats.includes(categoryId))
+      ) {
         return false;
-      }
-
-      // Formats check
-      if (selectedFormat.length > 0) {
-        const hasFormat = book.formats.some((f) => selectedFormat.includes(f));
-        if (!hasFormat) return false;
       }
 
       // Price range check
@@ -114,11 +299,14 @@ export default function BrowsePage() {
   }, [
     search,
     selectedCats,
-    selectedFormat,
+    includePurchased,
     minPrice,
     maxPrice,
     minRating,
     sortBy,
+    books,
+    purchasedBookIds,
+    pendingBookIds,
   ]);
 
   // Pagination Logic
@@ -157,33 +345,25 @@ export default function BrowsePage() {
       </div>
 
       <CategoryFilter
-        categories={CATEGORY_FILTERS}
+        categories={categoryFilters}
         selectedCats={selectedCats}
         onToggleCategory={handleCatChange}
         onClearCategories={handleClearCategories}
       />
 
-      {/* Format Filter */}
       <div className="filter-group">
-        <span className="filter-group__title">Định dạng Ebook</span>
-        <div className="filter-formats-grid">
-          {FORMAT_FILTERS.map((format) => {
-            const isSelected = selectedFormat.includes(format);
-            return (
-              <button
-                key={format}
-                type="button"
-                className={`filter-format-chip ${isSelected ? "filter-format-chip--active" : ""}`}
-                onClick={() => handleFormatChange(format)}
-              >
-                <span className="filter-format-icon">
-                  {format === "PDF" ? "📄" : format === "EPUB" ? "📘" : "🎧"}
-                </span>
-                <span>{format}</span>
-              </button>
-            );
-          })}
-        </div>
+        <span className="filter-group__title">Sách đã mua</span>
+        <label className="filter-checkbox-row">
+          <input
+            type="checkbox"
+            checked={includePurchased}
+            onChange={(event) => {
+              setIncludePurchased(event.target.checked);
+              setCurrentPage(1);
+            }}
+          />
+          <span>Đã mua</span>
+        </label>
       </div>
 
       {/* Price Range Filter */}
@@ -268,11 +448,11 @@ export default function BrowsePage() {
           <main className="browse-content" aria-label="Danh sách sách">
             {/* Page Header */}
             <section className="browse-hero">
-              <p className="browse-hero__eyebrow">BookVerse Catalog</p>
+              <p className="browse-hero__eyebrow">Danh mục Readify</p>
               <h1 className="browse-hero__title">Khám phá kho Ebook</h1>
               <p className="browse-hero__subtitle">
-                Lọc nhanh, duyệt sách theo định dạng và thể loại yêu thích để
-                tìm ngay tựa sách phù hợp.
+                Lọc nhanh, duyệt sách theo thể loại yêu thích để tìm ngay tựa
+                sách phù hợp.
               </p>
             </section>
 
@@ -331,8 +511,30 @@ export default function BrowsePage() {
               </div>
             </div>
 
+            {(cartNotice || cartError) && (
+              <div
+                className={`catalog-cart-message${cartError ? " catalog-cart-message--error" : ""}`}
+              >
+                {cartError || cartNotice}
+              </div>
+            )}
+
             {/* Grid / List Content */}
-            {filteredBooks.length === 0 ? (
+            {loadError ? (
+              <div className="catalog-empty">
+                <div className="catalog-empty__icon">⚠️</div>
+                <h3 className="catalog-empty__title">Không tải được catalog</h3>
+                <p className="catalog-empty__desc">{loadError}</p>
+              </div>
+            ) : isLoading ? (
+              <div className="catalog-empty">
+                <div className="catalog-empty__icon">⏳</div>
+                <h3 className="catalog-empty__title">Đang tải sách</h3>
+                <p className="catalog-empty__desc">
+                  Đang lấy dữ liệu sách từ backend API.
+                </p>
+              </div>
+            ) : filteredBooks.length === 0 ? (
               <div className="catalog-empty">
                 <div className="catalog-empty__icon">🔍</div>
                 <h3 className="catalog-empty__title">
@@ -358,6 +560,7 @@ export default function BrowsePage() {
                   <Link
                     key={book.id}
                     to={`/book/${book.id}`}
+                    onClick={(event) => handleOpenBook(event, book)}
                     style={{ textDecoration: "none", color: "inherit" }}
                   >
                     <BookCard
@@ -365,7 +568,7 @@ export default function BrowsePage() {
                       viewMode={viewMode}
                       isWishlisted={wishlist.includes(book.id)}
                       onWishlistToggle={toggleWishlist}
-                      onAddToCart={(b) => console.log("Added to cart:", b)}
+                      onAddToCart={handleAddToCart}
                     />
                   </Link>
                 ))}

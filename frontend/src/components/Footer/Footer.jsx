@@ -1,21 +1,22 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Link } from "react-router-dom";
+import { usePreferences } from "../../context/usePreferences";
 import "./Footer.css";
 
 const EXPLORE_LINKS = [
-  { label: "Trang chủ", to: "/" },
-  { label: "Khám phá sách", to: "/browse" },
-  { label: "Sách mới nhất", to: "/new-arrivals" },
-  { label: "Sách miễn phí", to: "/free" },
-  { label: "Thể loại", to: "/categories" },
+  { labelKey: "app.home", to: "/" },
+  { labelKey: "app.browse", to: "/browse" },
+  { labelVi: "Sách mới nhất", to: "/new-arrivals" },
+  { labelVi: "Sách miễn phí", to: "/free" },
+  { labelVi: "Thể loại", to: "/categories" },
 ];
 
 const SUPPORT_LINKS = [
-  { label: "Trung tâm hỗ trợ", to: "/help" },
-  { label: "Liên hệ chúng tôi", to: "/contact" },
-  { label: "Chính sách hoàn trả", to: "/refund-policy" },
-  { label: "Câu hỏi thường gặp", to: "/faq" },
-  { label: "Sơ đồ trang", to: "/sitemap" },
+  { labelVi: "Trung tâm hỗ trợ", to: "/help" },
+  { labelVi: "Liên hệ chúng tôi", to: "/contact" },
+  { labelVi: "Chính sách hoàn trả", to: "/refund-policy" },
+  { labelVi: "Câu hỏi thường gặp", to: "/faq" },
+  { labelVi: "Sơ đồ trang", to: "/sitemap" },
 ];
 
 const SOCIAL_LINKS = [
@@ -26,22 +27,31 @@ const SOCIAL_LINKS = [
 ];
 
 const LEGAL_LINKS = [
-  { label: "Chính sách bảo mật", to: "/privacy" },
-  { label: "Điều khoản sử dụng", to: "/terms" },
+  { labelVi: "Chính sách bảo mật", to: "/privacy" },
+  { labelVi: "Điều khoản sử dụng", to: "/terms" },
   { label: "Cookie", to: "/cookies" },
 ];
 
 export default function Footer() {
+  const { t } = usePreferences();
   const [email, setEmail] = useState("");
   const [subscribed, setSubscribed] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const emailRef = useRef(null);
+  const getLabel = (link) =>
+    link.labelKey ? t(link.labelKey) : link.labelVi || link.label;
 
   const handleSubscribe = (e) => {
     e.preventDefault();
-    if (email.trim()) {
-      setSubscribed(true);
-      setEmail("");
-      setTimeout(() => setSubscribed(false), 4000);
+    if (!email.trim()) {
+      setEmailError("Điền thiếu thông tin email.");
+      emailRef.current?.focus();
+      return;
     }
+    setEmailError("");
+    setSubscribed(true);
+    setEmail("");
+    setTimeout(() => setSubscribed(false), 4000);
   };
 
   return (
@@ -52,16 +62,15 @@ export default function Footer() {
           <Link
             to="/"
             className="footer__logo"
-            aria-label="BookVerse – Trang chủ"
+            aria-label="Readify – Trang chủ"
           >
             <div className="footer__logo-icon" aria-hidden="true">
-              📖
+              <img src="/logo.svg" alt="" className="footer__logo-img" />
             </div>
-            <span className="footer__logo-text">BookVerse</span>
+            <span className="footer__logo-text">Readify</span>
           </Link>
           <p className="footer__tagline">
-            Nền tảng ebook hàng đầu Việt Nam. Hàng nghìn đầu sách chất lượng,
-            đọc mọi lúc mọi nơi trên mọi thiết bị.
+            {t("footer.tagline")}
           </p>
           <div className="footer__socials">
             {SOCIAL_LINKS.map((social) => (
@@ -81,11 +90,11 @@ export default function Footer() {
 
         {/* Explore Column */}
         <div className="footer__col">
-          <h3 className="footer__col-title">Khám phá</h3>
+          <h3 className="footer__col-title">{t("footer.explore")}</h3>
           <nav className="footer__links" aria-label="Điều hướng khám phá">
             {EXPLORE_LINKS.map((link) => (
               <Link key={link.to} to={link.to} className="footer__link">
-                {link.label}
+                {getLabel(link)}
               </Link>
             ))}
           </nav>
@@ -93,11 +102,11 @@ export default function Footer() {
 
         {/* Support Column */}
         <div className="footer__col">
-          <h3 className="footer__col-title">Hỗ trợ</h3>
+          <h3 className="footer__col-title">{t("footer.support")}</h3>
           <nav className="footer__links" aria-label="Hỗ trợ khách hàng">
             {SUPPORT_LINKS.map((link) => (
               <Link key={link.to} to={link.to} className="footer__link">
-                {link.label}
+                {getLabel(link)}
               </Link>
             ))}
           </nav>
@@ -105,9 +114,9 @@ export default function Footer() {
 
         {/* Newsletter Column */}
         <div className="footer__newsletter">
-          <h3 className="footer__col-title">Nhận thông báo</h3>
+          <h3 className="footer__col-title">{t("footer.newsletter")}</h3>
           <p className="footer__newsletter-desc">
-            Đăng ký để nhận ưu đãi độc quyền, sách mới và nội dung hay mỗi tuần.
+            {t("footer.newsletterDesc")}
           </p>
 
           {subscribed ? (
@@ -118,35 +127,51 @@ export default function Footer() {
                 fontSize: "0.9rem",
               }}
             >
-              ✅ Đăng ký thành công! Cảm ơn bạn.
+              ✅ {t("footer.success")}
             </p>
           ) : (
             <form
               className="footer__newsletter-form"
               onSubmit={handleSubscribe}
               aria-label="Form đăng ký nhận bản tin"
+              noValidate
             >
               <div className="footer__newsletter-input-wrap">
                 <input
                   id="footer-newsletter-email"
                   type="email"
                   className="footer__newsletter-input"
-                  placeholder="Nhập email của bạn..."
+                  placeholder={t("footer.emailPlaceholder")}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    setEmailError("");
+                  }}
                   aria-label="Địa chỉ email"
-                  required
+                  ref={emailRef}
                 />
               </div>
+              {emailError && (
+                <p
+                  style={{
+                    margin: 0,
+                    color: "var(--accent-light)",
+                    fontSize: "0.86rem",
+                    fontWeight: 700,
+                  }}
+                >
+                  {emailError}
+                </p>
+              )}
               <button
                 type="submit"
                 className="footer__newsletter-btn"
                 id="footer-subscribe-btn"
               >
-                ✉️ Đăng ký ngay
+                ✉️ {t("footer.subscribe")}
               </button>
               <p className="footer__newsletter-note">
-                🔒 Chúng tôi không bao giờ chia sẻ email của bạn.
+                🔒 {t("footer.privacyNote")}
               </p>
             </form>
           )}
@@ -157,12 +182,12 @@ export default function Footer() {
       <div className="footer__bottom">
         <div className="footer__bottom-inner">
           <p className="footer__copyright">
-            © {new Date().getFullYear()} BookVerse. All rights reserved.
+            © {new Date().getFullYear()} Readify. {t("footer.rights")}
           </p>
           <nav className="footer__legal" aria-label="Điều khoản pháp lý">
             {LEGAL_LINKS.map((link) => (
               <Link key={link.to} to={link.to} className="footer__legal-link">
-                {link.label}
+                {getLabel(link)}
               </Link>
             ))}
           </nav>

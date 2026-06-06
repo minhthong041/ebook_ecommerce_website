@@ -52,8 +52,8 @@
   padding: var(--space-2xl);
   background: linear-gradient(
     135deg,
-    rgba(79, 70, 229, 0.08) 0%,
-    rgba(139, 92, 246, 0.04) 100%
+    rgba(231, 91, 91, 0.08) 0%,
+    rgba(251, 113, 133, 0.04) 100%
   );
   border-right: 1px solid var(--border);
   position: relative;
@@ -69,7 +69,7 @@
   height: 400px;
   background: radial-gradient(
     circle,
-    rgba(79, 70, 229, 0.12) 0%,
+    rgba(231, 91, 91, 0.12) 0%,
     transparent 70%
   );
   pointer-events: none;
@@ -101,13 +101,27 @@
 .auth-layout__brand-logo-icon {
   width: 48px;
   height: 48px;
-  background: var(--gradient-primary);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(231, 91, 91, 0.18);
   border-radius: var(--radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
-  box-shadow: 0 8px 24px rgba(79, 70, 229, 0.25);
+  padding: 7px;
+  box-shadow: 0 8px 24px rgba(231, 91, 91, 0.25);
+  overflow: hidden;
+}
+
+html[data-theme="dark"] .auth-layout__brand-logo-icon {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.auth-layout__brand-logo-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  transform: translateY(12%);
 }
 
 .auth-layout__brand-logo-text {
@@ -230,12 +244,26 @@
 .admin-layout__sidebar-logo-icon {
   width: 34px;
   height: 34px;
-  background: var(--gradient-primary);
+  background: rgba(255, 255, 255, 0.94);
+  border: 1px solid rgba(231, 91, 91, 0.16);
   border-radius: var(--radius-sm);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 17px;
+  padding: 5px;
+  overflow: hidden;
+}
+
+html[data-theme="dark"] .admin-layout__sidebar-logo-icon {
+  background: rgba(255, 255, 255, 0.92);
+}
+
+.admin-layout__sidebar-logo-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  transform: translateY(12%);
 }
 
 .admin-layout__sidebar-logo-text {
@@ -260,7 +288,7 @@
   font-size: 0.7rem;
   text-transform: uppercase;
   letter-spacing: 1px;
-  color: var(--text-muted);
+  color: var(--text-primary);
   padding: var(--space-md) var(--space-sm) var(--space-xs);
   font-weight: 600;
 }
@@ -273,7 +301,7 @@
   border-radius: var(--radius-sm);
   font-size: 0.88rem;
   font-weight: 500;
-  color: var(--text-secondary);
+  color: var(--text-primary);
   text-decoration: none;
   transition: all var(--transition);
 }
@@ -283,9 +311,26 @@
   color: var(--text-primary);
 }
 
+.admin-layout__sidebar-link--button {
+  width: 100%;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.admin-layout__sidebar-link--danger {
+  color: var(--text-primary);
+}
+
+.admin-layout__sidebar-link--danger:hover {
+  background: var(--alpha-subtle);
+  color: var(--text-primary);
+}
+
 .admin-layout__sidebar-link--active {
-  background: rgba(79, 70, 229, 0.08);
-  color: var(--accent);
+  background: rgba(231, 91, 91, 0.08);
+  color: var(--text-primary);
   font-weight: 600;
 }
 
@@ -323,6 +368,14 @@
   font-weight: 700;
   color: #fff;
   flex-shrink: 0;
+  overflow: hidden;
+}
+
+.admin-layout__sidebar-avatar-img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
 }
 
 .admin-layout__sidebar-user-info {
@@ -347,6 +400,9 @@
 .admin-layout__content {
   flex: 1;
   margin-left: 250px;
+  width: calc(100% - 250px);
+  min-width: 0;
+  max-width: calc(100vw - 250px);
   min-height: 100vh;
   background: var(--bg-base);
   display: flex;
@@ -358,6 +414,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: var(--space-md);
   padding: 0 var(--space-xl);
   border-bottom: 1px solid var(--border);
   background: rgba(255, 255, 255, 0.85);
@@ -367,16 +424,23 @@
   z-index: 40;
 }
 
+html[data-theme="dark"] .admin-layout__topbar {
+  background: rgba(33, 24, 27, 0.88);
+}
+
 .admin-layout__page-title {
   font-family: var(--font-heading);
   font-size: 1rem;
   font-weight: 700;
   color: var(--text-primary);
+  min-width: 0;
 }
 
 .admin-layout__main {
   flex: 1;
   padding: var(--space-xl);
+  min-width: 0;
+  overflow-x: hidden;
 }
 
 /* Responsive Admin */
@@ -389,5 +453,7 @@
   }
   .admin-layout__content {
     margin-left: 0;
+    width: 100%;
+    max-width: 100vw;
   }
 }

@@ -19,7 +19,7 @@
   transform: translate(-50%, -50%);
   width: 600px;
   height: 600px;
-  background: radial-gradient(circle, rgba(79, 70, 229, 0.08) 0%, transparent 70%);
+  background: radial-gradient(circle, rgba(231, 91, 91, 0.08) 0%, transparent 70%);
   pointer-events: none;
 }
 

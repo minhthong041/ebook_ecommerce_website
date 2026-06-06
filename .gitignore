@@ -19,8 +19,22 @@ htmlcov/
 # Django
 *.log
 db.sqlite3
-backend/media/*
+backend/media/**
+!backend/media/
 !backend/media/.gitkeep
+!backend/media/README.md
+!backend/media/ebooks/
+!backend/media/ebooks/.gitkeep
+!backend/media/ebooks/pdf/
+!backend/media/ebooks/pdf/.gitkeep
+!backend/media/ebooks/epub/
+!backend/media/ebooks/epub/.gitkeep
+!backend/media/ebooks/mobi/
+!backend/media/ebooks/mobi/.gitkeep
+!backend/media/covers/
+!backend/media/covers/.gitkeep
+!backend/media/avatars/
+!backend/media/avatars/.gitkeep
 staticfiles/
 backend/django-dev*.log
 

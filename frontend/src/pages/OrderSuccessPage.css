@@ -35,15 +35,122 @@
   display: flex;
   gap: 16px;
   justify-content: center;
+  flex-wrap: wrap;
+}
+
+.success-order-card,
+.bank-instructions-card {
+  width: min(560px, 100%);
+  margin: 0 auto 24px;
+  padding: 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  background: var(--bg-surface);
+  box-shadow: var(--shadow-sm);
+  text-align: left;
+}
+
+.success-order-card {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.success-order-card span,
+.bank-instruction-row span {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 0.82rem;
+}
+
+.success-order-card strong,
+.bank-instruction-row strong {
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.bank-instructions-card h2 {
+  margin-bottom: 14px;
+  font-size: 1.2rem;
+}
+
+.success-vietqr {
+  display: grid;
+  justify-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+}
+
+.success-vietqr img {
+  width: min(280px, 100%);
+  aspect-ratio: 1 / 1;
+  object-fit: contain;
+  border-radius: var(--radius-sm);
+  background: #fff;
+}
+
+.success-vietqr span {
+  color: var(--text-secondary);
+  font-size: 0.92rem;
+  text-align: center;
+}
+
+.payment-countdown {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  background: rgba(245, 158, 11, 0.1);
+}
+
+.payment-countdown span {
+  color: #92400e;
+  font-weight: 800;
+}
+
+.payment-countdown strong {
+  color: #7c2d12;
+  font-size: 1.35rem;
+  letter-spacing: 0;
+}
+
+.payment-countdown--expired {
+  border-color: rgba(220, 38, 38, 0.28);
+  background: rgba(220, 38, 38, 0.08);
+}
+
+.payment-countdown--expired span,
+.payment-countdown--expired strong {
+  color: #991b1b;
+}
+
+.bank-instruction-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.bank-instruction-row:last-child {
+  border-bottom: 0;
 }
 
 /* Nút phụ (Secondary button) nếu cần */
 /* Nút phụ (Secondary button) */
 .btn-secondary {
   padding: 12px 24px;
-  background-color: #f3f4f6; /* Màu xám nhạt */
-  color: #374151;
-  border: 1px solid #d1d5db;
+  background-color: var(--bg-elevated); /* Màu xám nhạt */
+  color: var(--text-primary);
+  border: 1px solid var(--border);
   border-radius: 9999px; /* 🟢 Chỉnh thành 9999px để bo tròn hẳn (dạng viên thuốc) giống nút primary */
   font-weight: 600;
   cursor: pointer;
@@ -52,9 +159,20 @@
 }
 
 .btn-secondary:hover {
-  background-color: #e5e7eb; /* Đổi màu xám tối hơn một chút xíu khi hover */
+  background-color: var(--alpha-subtle); /* Đổi màu xám tối hơn một chút xíu khi hover */
   transform: translateY(-3px); /* 🟢 Nhô lên trên 3px khi lia chuột vào */
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* 🟢 Thêm bóng đổ nhẹ cho có chiều sâu */
+}
+
+@media (max-width: 640px) {
+  .success-order-card {
+    grid-template-columns: 1fr;
+  }
+
+  .bank-instruction-row {
+    flex-direction: column;
+    gap: 4px;
+  }
 }
 
 .btn-secondary:active {

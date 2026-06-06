@@ -1,32 +1,12 @@
 from django.contrib import admin
 
-from .models import PaymentMethod, PaymentType, Transaction, TransactionStatus
+from .models import PaymentType, Transaction, TransactionStatus
 
 
 @admin.register(PaymentType)
 class PaymentTypeAdmin(admin.ModelAdmin):
     list_display = ("id", "value")
     search_fields = ("value",)
-
-
-@admin.register(PaymentMethod)
-class PaymentMethodAdmin(admin.ModelAdmin):
-    list_display = (
-        "id",
-        "customer",
-        "payment_type",
-        "provider",
-        "is_default",
-        "expiry_day",
-    )
-    list_filter = ("payment_type", "provider", "is_default")
-    search_fields = (
-        "customer__user__username",
-        "customer__user__email",
-        "provider",
-        "account_number",
-    )
-    autocomplete_fields = ("customer", "payment_type")
 
 
 @admin.register(TransactionStatus)

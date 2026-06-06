@@ -12,31 +12,33 @@ export default function AuthLayout() {
       {/* Brand / Illustration panel */}
       <div className="auth-layout__brand" aria-hidden="true">
         <Link to="/" className="auth-layout__brand-logo">
-          <div className="auth-layout__brand-logo-icon">📖</div>
-          <span className="auth-layout__brand-logo-text">BookVerse</span>
+          <div className="auth-layout__brand-logo-icon">
+            <img src="/logo.svg" alt="" className="auth-layout__brand-logo-img" />
+          </div>
+          <span className="auth-layout__brand-logo-text">Readify</span>
         </Link>
 
         <h1 className="auth-layout__brand-headline">
-          Kho ebook khổng lồ trong lòng bàn tay bạn
+          Thư viện ebook của bạn trong một tài khoản
         </h1>
 
         <p className="auth-layout__brand-quote">
-          Tham gia cùng hàng triệu độc giả. Đọc không giới hạn, tải về đọc offline,
-          và khám phá thế giới tri thức chỉ với một tài khoản duy nhất.
+          Đăng nhập để mua sách, quản lý thư viện cá nhân, đọc online và tải
+          các file ebook đã sở hữu.
         </p>
 
         <div className="auth-layout__brand-stats">
           <div className="auth-layout__brand-stat">
-            <span className="auth-layout__brand-stat-value">50K+</span>
-            <span className="auth-layout__brand-stat-label">Đầu sách</span>
+            <span className="auth-layout__brand-stat-value">PDF</span>
+            <span className="auth-layout__brand-stat-label">Tải file</span>
           </div>
           <div className="auth-layout__brand-stat">
-            <span className="auth-layout__brand-stat-value">2M+</span>
-            <span className="auth-layout__brand-stat-label">Độc giả</span>
+            <span className="auth-layout__brand-stat-value">EPUB</span>
+            <span className="auth-layout__brand-stat-label">Đọc ebook</span>
           </div>
           <div className="auth-layout__brand-stat">
-            <span className="auth-layout__brand-stat-value">200+</span>
-            <span className="auth-layout__brand-stat-label">Thể loại</span>
+            <span className="auth-layout__brand-stat-value">MOBI</span>
+            <span className="auth-layout__brand-stat-label">Lưu trữ</span>
           </div>
         </div>
       </div>

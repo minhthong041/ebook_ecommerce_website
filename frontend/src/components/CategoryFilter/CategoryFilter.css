@@ -4,7 +4,7 @@
   gap: var(--space-md);
   padding: var(--space-md);
   background: var(--bg-surface);
-  border: 1px solid rgba(79, 70, 229, 0.12);
+  border: 1px solid rgba(231, 91, 91, 0.12);
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-sm);
 }
@@ -59,14 +59,14 @@
 
 .category-filter__item:hover {
   transform: translateY(-1px);
-  background: rgba(79, 70, 229, 0.05);
+  background: rgba(231, 91, 91, 0.05);
   color: var(--text-primary);
 }
 
 .category-filter__item--active {
-  background: rgba(79, 70, 229, 0.1);
+  background: rgba(231, 91, 91, 0.1);
   color: var(--text-primary);
-  box-shadow: inset 0 0 0 1px rgba(79, 70, 229, 0.18);
+  box-shadow: inset 0 0 0 1px rgba(231, 91, 91, 0.18);
 }
 
 .category-filter__label {

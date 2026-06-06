@@ -3,7 +3,6 @@ import "./Sidebar.css";
 
 const SIDEBAR_LINKS = [
   { to: "/browse", label: "Khám phá", icon: "🔍" },
-  { to: "/authors", label: "Tác giả", icon: "✍️" },
   { to: "/library", label: "Thư viện", icon: "📚" },
   { to: "/cart", label: "Giỏ hàng", icon: "🛒" },
   { to: "/pricing", label: "Premium", icon: "💎" },

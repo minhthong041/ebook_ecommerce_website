@@ -92,8 +92,15 @@
   display: grid;
   place-items: center;
   border-radius: var(--radius-md);
-  background: rgba(79, 70, 229, 0.08);
+  background: rgba(231, 91, 91, 0.08);
   font-size: 1.2rem;
+}
+
+.cart-drawer-row__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: inherit;
 }
 
 .cart-drawer-row__meta h3 {

@@ -1,10 +1,11 @@
 from django.db import IntegrityError
 
 from rest_framework import status, viewsets
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, authentication_classes, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 
+from accounts.authentications import JWTAuthentication
 from accounts.models import Customer
 
 from .models import ShoppingCart, ShoppingCartItem
@@ -19,6 +20,7 @@ def _get_or_create_cart(customer):
 
 
 class CartItemViewSet(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
     serializer_class = CartItemSerializer
     permission_classes = [IsAuthenticated]
     http_method_names = ["get", "post", "delete"]
@@ -28,7 +30,10 @@ class CartItemViewSet(viewsets.ModelViewSet):
         cart = ShoppingCart.objects.filter(customer=customer).first()
         if not cart:
             return ShoppingCartItem.objects.none()
-        return cart.items.all()
+        return cart.items.select_related("book").prefetch_related(
+            "book__book_authors__author",
+            "book__ebook_files__format_type",
+        )
 
     def perform_create(self, serializer):
         customer, _ = Customer.objects.get_or_create(user=self.request.user)
@@ -41,6 +46,7 @@ class CartItemViewSet(viewsets.ModelViewSet):
 
 
 @api_view(["GET"])
+@authentication_classes([JWTAuthentication])
 @permission_classes([IsAuthenticated])
 def cart_summary(request):
     customer, _ = Customer.objects.get_or_create(user=request.user)
