@@ -6,12 +6,14 @@ from .models import (
     BookAuthor,
     BookCategory,
     BookChapter,
+    BookReview,
     BookSeries,
     Category,
     EbookFile,
     FormatType,
     Publisher,
     Series,
+    Wishlist,
 )
 
 
@@ -46,8 +48,8 @@ class EbookFileInline(admin.TabularInline):
 
 @admin.register(Book)
 class BookAdmin(admin.ModelAdmin):
-    list_display = ("id", "title", "publisher", "price", "year_of_publication")
-    list_filter = ("publisher", "categories", "authors", "series")
+    list_display = ("id", "title", "publisher", "price", "year_of_publication", "is_active")
+    list_filter = ("is_active", "publisher", "categories", "authors", "series")
     search_fields = ("title", "publisher__name", "authors__full_name")
     autocomplete_fields = ("publisher",)
     inlines = (
@@ -130,3 +132,36 @@ class BookCategoryAdmin(admin.ModelAdmin):
 class BookSeriesAdmin(admin.ModelAdmin):
     list_display = ("id", "book", "series", "volume_number")
     autocomplete_fields = ("book", "series")
+
+
+@admin.register(BookReview)
+class BookReviewAdmin(admin.ModelAdmin):
+    list_display = (
+        "id",
+        "book",
+        "customer",
+        "rating",
+        "title",
+        "is_purchased",
+        "status",
+        "created_at",
+    )
+    list_filter = ("rating", "is_purchased", "status", "created_at")
+    search_fields = (
+        "book__title",
+        "customer__user__username",
+        "customer__user__full_name",
+        "comment",
+    )
+    autocomplete_fields = ("book", "customer")
+
+
+@admin.register(Wishlist)
+class WishlistAdmin(admin.ModelAdmin):
+    list_display = ("id", "customer", "book")
+    search_fields = (
+        "customer__user__username",
+        "customer__user__full_name",
+        "book__title",
+    )
+    autocomplete_fields = ("customer", "book")

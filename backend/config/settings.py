@@ -151,6 +151,11 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
 ]
 
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^http://localhost:517\d$",
+    r"^http://127\.0\.0\.1:517\d$",
+]
+
 # CORS for Cookies
 CORS_ALLOW_CREDENTIALS = True
 
@@ -159,3 +164,19 @@ from datetime import timedelta
 JWT_SECRET_KEY = config("SECRET_KEY")
 JWT_ACCESS_EXPIRATION = timedelta(minutes=15)
 JWT_REFRESH_EXPIRATION = timedelta(days=7)
+
+PAYMENT_BANK_CODE = config("PAYMENT_BANK_CODE", default="VCB")
+PAYMENT_BANK_NAME = config("PAYMENT_BANK_NAME", default="Vietcombank")
+PAYMENT_BANK_ACCOUNT_NUMBER = config(
+    "PAYMENT_BANK_ACCOUNT_NUMBER",
+    default="000012345678",
+)
+PAYMENT_BANK_ACCOUNT_NAME = config(
+    "PAYMENT_BANK_ACCOUNT_NAME",
+    default="READIFY EBOOK",
+)
+PAYMENT_BANK_QR_TEMPLATE = config("PAYMENT_BANK_QR_TEMPLATE", default="compact2")
+PAYMENT_BANK_QR_BASE_URL = config(
+    "PAYMENT_BANK_QR_BASE_URL",
+    default="https://img.vietqr.io/image",
+)

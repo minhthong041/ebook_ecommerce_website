@@ -46,12 +46,12 @@ class ShopOrder(models.Model):
         db_column="order_status",
         related_name="orders",
     )
-    payment_method = models.ForeignKey(
-        "payments.PaymentMethod",
+    payment_type = models.ForeignKey(
+        "payments.PaymentType",
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
-        db_column="payment_method_id",
+        db_column="payment_type_id",
         related_name="orders",
     )
 

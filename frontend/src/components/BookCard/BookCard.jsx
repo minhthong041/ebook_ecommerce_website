@@ -19,13 +19,17 @@ export default function BookCard({
     formats,
     coverIcon,
     coverUrl,
-    isBestseller
+    isBestseller,
+    isPurchased,
+    hasPendingOrder,
+    isActive = true
   } = book
 
   const hasDiscount = originalPrice > price
   const discountPercent = hasDiscount
     ? Math.round(((originalPrice - price) / originalPrice) * 100)
     : 0
+  const hasReviews = Number(reviewsCount) > 0
 
   const handleWishlistClick = (e) => {
     e.preventDefault()
@@ -44,7 +48,7 @@ export default function BookCard({
   }
 
   return (
-    <article className={`book-card book-card--${viewMode}`}>
+    <article className={`book-card book-card--${viewMode}${!isActive ? ' book-card--inactive' : ''}`}>
       {/* Cover / Image area */}
       <div className="book-card__cover-wrap">
         {coverUrl ? (
@@ -61,6 +65,9 @@ export default function BookCard({
         )}
         {isBestseller && (
           <span className="book-card__badge-bestseller">Bán chạy</span>
+        )}
+        {!isActive && (
+          <span className="book-card__badge-unavailable">Không khả dụng</span>
         )}
 
         {/* Formats Badge */}
@@ -89,15 +96,30 @@ export default function BookCard({
           {categoryLabel && <span className="book-card__category">{categoryLabel}</span>}
           <h3 className="book-card__title" title={title}>{title}</h3>
           <p className="book-card__author">{author}</p>
+          {isPurchased && (
+            <p className="book-card__owned-status">Đã có trong thư viện</p>
+          )}
+          {hasPendingOrder && !isPurchased && (
+            <p className="book-card__owned-status">Đang chờ thanh toán</p>
+          )}
+          {!isActive && (
+            <p className="book-card__unavailable-status">Sách hiện không khả dụng</p>
+          )}
           
           {/* Rating */}
-          <div className="book-card__rating">
-            <span className="book-card__stars" aria-hidden="true">
-              {"★".repeat(Math.floor(rating))}
-              {"☆".repeat(5 - Math.floor(rating))}
-            </span>
-            <span>{rating} ({reviewsCount})</span>
-          </div>
+          {hasReviews ? (
+            <div className="book-card__rating">
+              <span className="book-card__stars" aria-hidden="true">
+                {"★".repeat(Math.floor(rating))}
+                {"☆".repeat(5 - Math.floor(rating))}
+              </span>
+              <span>{rating} ({reviewsCount})</span>
+            </div>
+          ) : (
+            <div className="book-card__rating book-card__rating--empty">
+              Chưa có đánh giá
+            </div>
+          )}
         </div>
 
         {/* Price & Buy Button */}
@@ -110,11 +132,19 @@ export default function BookCard({
           </div>
           <button
             type="button"
-            className="book-card__cart-btn"
+            className={`book-card__cart-btn${isPurchased ? ' book-card__cart-btn--owned' : ''}${!isActive ? ' book-card__cart-btn--inactive' : ''}`}
             onClick={handleCartClick}
-            aria-label="Thêm sách vào giỏ hàng"
+            aria-label={
+              !isActive
+                ? "Sách hiện không khả dụng"
+                : isPurchased
+                  ? "Sách đã có trong thư viện"
+                  : hasPendingOrder
+                    ? "Sách đang có đơn chờ thanh toán"
+                  : "Thêm sách vào giỏ hàng"
+            }
           >
-            🛒
+            {!isActive ? "!" : isPurchased ? "✓" : hasPendingOrder ? "⏳" : "🛒"}
           </button>
         </div>
       </div>

@@ -2,13 +2,66 @@ from django.core.exceptions import ObjectDoesNotExist
 
 from rest_framework import serializers
 
+from catalog.models import Book
+from orders.services import get_active_pending_book_ids, get_purchased_book_ids
+
 from .models import ShoppingCart, ShoppingCartItem
 
 
-class CartItemBookSerializer(serializers.Serializer):
-    id = serializers.IntegerField()
-    title = serializers.CharField()
-    price = serializers.DecimalField(max_digits=10, decimal_places=2)
+class CartItemBookSerializer(serializers.ModelSerializer):
+    authors = serializers.SerializerMethodField()
+    cover_url = serializers.SerializerMethodField()
+    format_labels = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Book
+        fields = [
+            "id",
+            "title",
+            "price",
+            "authors",
+            "cover_url",
+            "format_labels",
+        ]
+
+    def get_authors(self, obj):
+        return [
+            {"id": book_author.author_id, "full_name": book_author.author.full_name}
+            for book_author in obj.book_authors.select_related("author").all()
+        ]
+
+    def get_cover_url(self, obj):
+        stored_url = None
+        if isinstance(obj.book_image, dict):
+            stored_url = obj.book_image.get("url")
+        elif isinstance(obj.book_image, str):
+            stored_url = obj.book_image
+
+        if stored_url:
+            return self._build_absolute_url(stored_url)
+
+        if not obj.cover_image:
+            return None
+
+        return self._build_absolute_url(obj.cover_image.url)
+
+    def get_format_labels(self, obj):
+        return [
+            ebook_file.format_type.name
+            for ebook_file in obj.ebook_files.select_related("format_type").all()
+        ]
+
+    def _build_absolute_url(self, url):
+        if url.startswith(("http://", "https://")):
+            return url
+
+        request = self.context.get("request")
+        if request:
+            try:
+                return request.build_absolute_uri(url)
+            except Exception:
+                return url
+        return url
 
 
 class CartItemSerializer(serializers.ModelSerializer):
@@ -20,9 +73,10 @@ class CartItemSerializer(serializers.ModelSerializer):
         fields = ["id", "book_id", "book"]
 
     def validate_book_id(self, value):
-        from catalog.models import Book
         if not Book.objects.filter(pk=value).exists():
             raise serializers.ValidationError("Book not found.")
+        if not Book.objects.filter(pk=value, is_active=True).exists():
+            raise serializers.ValidationError("This book is currently unavailable.")
         return value
 
     def validate(self, attrs):
@@ -32,9 +86,18 @@ class CartItemSerializer(serializers.ModelSerializer):
                 customer = request.user.customer
             except ObjectDoesNotExist:
                 return attrs
+            book_id = attrs["book_id"]
+            if book_id in get_purchased_book_ids(customer):
+                raise serializers.ValidationError(
+                    {"book_id": "Sách này đã có trong thư viện của bạn."}
+                )
+            if book_id in get_active_pending_book_ids(customer):
+                raise serializers.ValidationError(
+                    {"book_id": "Sách này đang có đơn chờ thanh toán."}
+                )
             cart = ShoppingCart.objects.filter(customer=customer).first()
             if cart and ShoppingCartItem.objects.filter(
-                cart=cart, book_id=attrs["book_id"]
+                cart=cart, book_id=book_id
             ).exists():
                 raise serializers.ValidationError(
                     {"book_id": "This book is already in your cart."}

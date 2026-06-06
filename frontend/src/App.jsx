@@ -1,4 +1,5 @@
-import { createBrowserRouter, RouterProvider } from "react-router-dom";
+import { useContext } from "react";
+import { createBrowserRouter, Navigate, RouterProvider } from "react-router-dom";
 
 // 1. Layouts và các trang tính năng (main)
 import MainLayout from "./layouts/MainLayout";
@@ -7,12 +8,20 @@ import AdminLayout from "./layouts/AdminLayout";
 
 import HomePage from "./pages/Home/HomePage";
 import BrowsePage from "./pages/Browse/BrowsePage";
-import AuthorsPage from "./pages/Authors/AuthorsPage";
 import CartPage from "./pages/Cart/CartPage";
 import NotFoundPage from "./pages/NotFound/NotFoundPage";
 import BookDetailPage from "./pages/BookDetail/BookDetailPage";
 import LibraryPage from "./pages/Library/LibraryPage";
 import ReaderPage from "./pages/Reader/ReaderPage";
+import WishlistPage from "./pages/WishlistPage";
+import StaffBookManagement from "./pages/StaffBookManagement";
+import StaffReviewManagement from "./pages/StaffReviewManagement";
+import StaffBookUpload from "./pages/StaffBookUpload";
+import StaffOrderManagement from "./pages/StaffOrderManagement";
+import AdminUserManagement from "./pages/AdminUserManagement";
+import DashboardPage from "./pages/DashboardPage";
+import OrdersPage from "./pages/OrdersPage";
+import SettingsPage from "./pages/SettingsPage";
 
 // 🟢 THÊM MỚI: Import 2 trang vừa tạo
 import CheckoutPage from "./pages/CheckoutPage";
@@ -22,6 +31,7 @@ import OrderSuccessPage from "./pages/OrderSuccessPage";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Account from "./pages/Account";
+import { AuthContext } from "./context/AuthContext";
 import ProtectedRoute from "./context/ProtectedRoute";
 
 /** Component hiển thị tạm thời của hệ thống */
@@ -66,6 +76,36 @@ function ComingSoon({ page }) {
   );
 }
 
+function GuestRoute({ children }) {
+  const { isAuthenticated, isAuthReady } = useContext(AuthContext);
+
+  if (!isAuthReady) {
+    return <RouteLoading />;
+  }
+
+  if (isAuthenticated) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+}
+
+function RouteLoading() {
+  return (
+    <div
+      style={{
+        minHeight: "50vh",
+        display: "grid",
+        placeItems: "center",
+        color: "var(--text-secondary)",
+        fontWeight: 700,
+      }}
+    >
+      Đang kiểm tra đăng nhập...
+    </div>
+  );
+}
+
 // 3. Hệ thống cấu hình Tuyến đường (Router) hợp nhất
 const router = createBrowserRouter([
   {
@@ -74,7 +114,6 @@ const router = createBrowserRouter([
     children: [
       { index: true, element: <HomePage /> },
       { path: "browse", element: <BrowsePage /> },
-      { path: "authors", element: <AuthorsPage /> },
       { path: "pricing", element: <ComingSoon page="Premium" /> },
       { path: "search", element: <ComingSoon page="Tìm kiếm" /> },
       { path: "cart", element: <CartPage /> },
@@ -89,18 +128,100 @@ const router = createBrowserRouter([
     // ── Auth routes (Giao diện Đăng nhập / Đăng ký) ──
     element: <AuthLayout />,
     children: [
-      { path: "login", element: <Login /> },
-      { path: "register", element: <Register /> },
+      {
+        path: "login",
+        element: (
+          <GuestRoute>
+            <Login />
+          </GuestRoute>
+        ),
+      },
+      {
+        path: "register",
+        element: (
+          <GuestRoute>
+            <Register />
+          </GuestRoute>
+        ),
+      },
     ],
   },
   {
     // ── Dashboard / Account routes (Giao diện Quản lý / Trang cá nhân) ──
     element: <AdminLayout pageTitle="Dashboard" />,
     children: [
-      { path: "dashboard", element: <ComingSoon page="Dashboard" /> },
-      { path: "library", element: <LibraryPage /> },
-      { path: "orders", element: <ComingSoon page="Đơn hàng" /> },
-
+      {
+        path: "dashboard",
+        element: (
+          <ProtectedRoute>
+            <DashboardPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "library",
+        element: (
+          <ProtectedRoute>
+            <LibraryPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "wishlist",
+        element: (
+          <ProtectedRoute>
+            <WishlistPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "orders",
+        element: (
+          <ProtectedRoute>
+            <OrdersPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "staff/orders",
+        element: (
+          <ProtectedRoute>
+            <StaffOrderManagement />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "staff/books",
+        element: (
+          <ProtectedRoute>
+            <StaffBookManagement />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "staff/books/upload",
+        element: (
+          <ProtectedRoute>
+            <StaffBookUpload />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "staff/reviews",
+        element: (
+          <ProtectedRoute>
+            <StaffReviewManagement />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "admin/users",
+        element: (
+          <ProtectedRoute>
+            <AdminUserManagement />
+          </ProtectedRoute>
+        ),
+      },
       {
         path: "profile",
         element: (
@@ -117,7 +238,14 @@ const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
-      { path: "settings", element: <ComingSoon page="Cài đặt" /> },
+      {
+        path: "settings",
+        element: (
+          <ProtectedRoute>
+            <SettingsPage />
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
   {

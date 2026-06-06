@@ -6,15 +6,10 @@ from django.utils import timezone
 
 from accounts.models import AppPermission, Role, RolePermission
 from catalog.models import (
-    Author,
-    Book,
-    BookAuthor,
-    BookCategory,
     Category,
     FormatType,
-    Publisher,
 )
-from orders.models import OrderStatus
+from orders.models import OrderStatus, ShopOrder
 from payments.models import PaymentType, TransactionStatus
 from promotions.models import Coupon
 
@@ -31,14 +26,29 @@ class Command(BaseCommand):
         self.stdout.write(self.style.SUCCESS("Base seed data is ready."))
 
     def seed_roles_and_permissions(self):
+        legacy_content_manager = Role.objects.filter(name="Content Manager").first()
+        employee_role, _ = Role.objects.get_or_create(name="Employee")
+
+        if legacy_content_manager and legacy_content_manager != employee_role:
+            legacy_content_manager.users.update(role=employee_role)
+            for role_permission in legacy_content_manager.role_permissions.select_related("permission"):
+                RolePermission.objects.get_or_create(
+                    role=employee_role,
+                    permission=role_permission.permission,
+                )
+            legacy_content_manager.delete()
+
         roles = {
             "Admin": [
                 ("accounts", "manage_users", "Manage users, customers, roles, and permissions."),
                 ("catalog", "manage_catalog", "Manage books, authors, publishers, and categories."),
                 ("orders", "manage_orders", "Manage orders and order statuses."),
-                ("payments", "manage_payments", "Manage payment methods and transactions."),
+                ("payments", "manage_payments", "Manage payment types and transactions."),
                 ("promotions", "manage_promotions", "Manage coupons and promotions."),
                 ("library", "manage_library", "Manage customer libraries and reading data."),
+            ],
+            "Employee": [
+                ("catalog", "manage_catalog", "Manage books, authors, publishers, and categories."),
             ],
             "Customer": [
                 ("catalog", "view_catalog", "View books and catalog data."),
@@ -61,7 +71,25 @@ class Command(BaseCommand):
                 RolePermission.objects.get_or_create(role=role, permission=permission)
 
     def seed_order_statuses(self):
-        for name in ["Pending", "Paid", "Completed", "Cancelled", "Refunded"]:
+        legacy_map = {
+            "Pending": "pending",
+            "Paid": "completed",
+            "Completed": "completed",
+            "Cancelled": "cancelled",
+            "Failed": "failed",
+            "Refunded": "refunded",
+        }
+        for old_name, new_name in legacy_map.items():
+            old_status = OrderStatus.objects.filter(name=old_name).first()
+            if old_status:
+                target_status, _ = OrderStatus.objects.get_or_create(name=new_name)
+                if old_status.pk != target_status.pk:
+                    ShopOrder.objects.filter(order_status=old_status).update(
+                        order_status=target_status
+                    )
+                    old_status.delete()
+
+        for name in ["pending", "completed", "cancelled", "failed", "refunded"]:
             OrderStatus.objects.get_or_create(name=name)
 
     def seed_payment_data(self):
@@ -81,78 +109,10 @@ class Command(BaseCommand):
             "Business": ["Marketing", "Management", "Finance"],
         }
 
-        category_map = {}
         for parent_name, child_names in categories.items():
             parent, _ = Category.objects.get_or_create(name=parent_name, parent=None)
-            category_map[parent_name] = parent
             for child_name in child_names:
-                child, _ = Category.objects.get_or_create(name=child_name, parent=parent)
-                category_map[child_name] = child
-
-        publishers = {
-            "Open Books Publishing": Publisher.objects.get_or_create(
-                name="Open Books Publishing"
-            )[0],
-            "Tech Press": Publisher.objects.get_or_create(name="Tech Press")[0],
-            "Business House": Publisher.objects.get_or_create(name="Business House")[0],
-        }
-
-        authors = {
-            "An Nguyen": Author.objects.get_or_create(full_name="An Nguyen")[0],
-            "Minh Tran": Author.objects.get_or_create(full_name="Minh Tran")[0],
-            "Linh Pham": Author.objects.get_or_create(full_name="Linh Pham")[0],
-        }
-
-        sample_books = [
-            {
-                "title": "Django API Foundations",
-                "publisher": publishers["Tech Press"],
-                "price": Decimal("149000.00"),
-                "year_of_publication": 2025,
-                "description": "A practical introduction to building APIs with Django REST Framework.",
-                "authors": [authors["Minh Tran"]],
-                "categories": [category_map["Technology"], category_map["Programming"]],
-            },
-            {
-                "title": "React Storefront Essentials",
-                "publisher": publishers["Tech Press"],
-                "price": Decimal("129000.00"),
-                "year_of_publication": 2025,
-                "description": "Build reusable storefront interfaces with React and modern frontend tooling.",
-                "authors": [authors["An Nguyen"]],
-                "categories": [category_map["Technology"], category_map["Software Engineering"]],
-            },
-            {
-                "title": "Digital Business Basics",
-                "publisher": publishers["Business House"],
-                "price": Decimal("99000.00"),
-                "year_of_publication": 2024,
-                "description": "Core concepts for running and growing digital commerce products.",
-                "authors": [authors["Linh Pham"]],
-                "categories": [category_map["Business"], category_map["Marketing"]],
-            },
-            {
-                "title": "The Library of Hidden Pages",
-                "publisher": publishers["Open Books Publishing"],
-                "price": Decimal("79000.00"),
-                "year_of_publication": 2023,
-                "description": "A light fantasy novel for testing the ebook storefront experience.",
-                "authors": [authors["An Nguyen"], authors["Linh Pham"]],
-                "categories": [category_map["Fiction"], category_map["Fantasy"]],
-            },
-        ]
-
-        for book_data in sample_books:
-            authors_for_book = book_data.pop("authors")
-            categories_for_book = book_data.pop("categories")
-            book, _ = Book.objects.update_or_create(
-                title=book_data["title"],
-                defaults=book_data,
-            )
-            for author in authors_for_book:
-                BookAuthor.objects.get_or_create(book=book, author=author)
-            for category in categories_for_book:
-                BookCategory.objects.get_or_create(book=book, category=category)
+                Category.objects.get_or_create(name=child_name, parent=parent)
 
     def seed_sample_coupon(self):
         Coupon.objects.update_or_create(

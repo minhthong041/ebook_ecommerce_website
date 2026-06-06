@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useParams, Link } from "react-router-dom";
-import { BOOKS } from "../../data/bookData";
+import axiosClient from "../../api/axiosClient";
 import "./ReaderPage.css";
 
 const THEMES = [
@@ -11,14 +11,24 @@ const THEMES = [
 
 const FONTS = [
   {
-    id: "serif",
-    name: "Có chân (Serif)",
-    family: "Georgia, 'Times New Roman', serif",
+    id: "open-sans",
+    name: "Open Sans",
+    family: "'Open Sans', system-ui, sans-serif",
   },
   {
-    id: "sans-serif",
-    name: "Không chân (Sans-Serif)",
-    family: "'Inter', -apple-system, sans-serif",
+    id: "times-new-roman",
+    name: "Times New Roman",
+    family: "'Times New Roman', Times, serif",
+  },
+  {
+    id: "arial",
+    name: "Arial",
+    family: "Arial, Helvetica, sans-serif",
+  },
+  {
+    id: "montserrat",
+    name: "Montserrat",
+    family: "'Montserrat', 'Open Sans', system-ui, sans-serif",
   },
 ];
 
@@ -31,51 +41,128 @@ const FONT_SIZES = [
 
 const createId = () => Date.now();
 
+const getStoredJson = (key, fallbackValue) => {
+  const saved = localStorage.getItem(key);
+  if (!saved) {
+    return fallbackValue;
+  }
+
+  try {
+    return JSON.parse(saved);
+  } catch {
+    return fallbackValue;
+  }
+};
+
+const getStoredChapterIndex = (bookId) => {
+  const progress = getStoredJson(`reader_progress_${bookId}`, {});
+  return progress.chapterIndex ?? 0;
+};
+
+const getStoredHighestProgress = (bookId) => {
+  const progress = getStoredJson(`reader_progress_${bookId}`, {});
+  return Number(progress.highestProgress || 0);
+};
+
+const clampProgress = (value) =>
+  Math.min(100, Math.max(0, Number(value || 0)));
+
+const mapReaderChapters = (chapters) =>
+  chapters.map((chapter, index) => ({
+    id: chapter.id || `reader-${index + 1}`,
+    title: chapter.title || `Phần ${index + 1}`,
+    page: chapter.order_index ?? index + 1,
+    contentUrl: "",
+    paragraphs: Array.isArray(chapter.paragraphs) ? chapter.paragraphs : [],
+  }));
+
+const mapDatabaseChapters = (chapters) =>
+  chapters
+    .map((chapter, index) => ({
+      id: chapter.id || `chapter-${index + 1}`,
+      title: chapter.title || `Chương ${index + 1}`,
+      page: chapter.order_index ?? index + 1,
+      contentUrl: chapter.content_url || "",
+      paragraphs: [],
+    }))
+    .sort((a, b) => (a.page ?? 0) - (b.page ?? 0));
+
+const mapLibraryBook = (payload) => {
+  const readerChapters = Array.isArray(payload.reader_chapters)
+    ? mapReaderChapters(payload.reader_chapters)
+    : [];
+  const savedChapters = Array.isArray(payload.chapters)
+    ? mapDatabaseChapters(payload.chapters)
+    : [];
+
+  const tableOfContents = readerChapters.length
+    ? readerChapters
+    : savedChapters.length
+      ? savedChapters
+    : [
+        {
+          id: null,
+          title: "Nội dung sách",
+          page: 1,
+          contentUrl: "",
+          paragraphs: [],
+        },
+      ];
+  const savedProgress = Array.isArray(payload.reading_progress)
+    ? Math.max(
+        0,
+        ...payload.reading_progress.map((progress) =>
+          Number(progress.percent_complete || 0),
+        ),
+      )
+    : 0;
+
+  return {
+    ...payload,
+    author:
+      payload.authors?.map((author) => author.full_name).join(", ") ||
+      "Không rõ tác giả",
+    tableOfContents,
+    hasReaderContent: readerChapters.length > 0,
+    readerMessage: payload.reader_message || "",
+    readerSourceFormat: payload.reader_source_format || "",
+    readerIsTruncated: Boolean(payload.reader_is_truncated),
+    savedProgress,
+  };
+};
+
 export default function ReaderPage() {
   const { id } = useParams();
   const bookId = Number(id);
 
-  // 1. Load book data
-  const book = useMemo(() => BOOKS.find((b) => b.id === bookId), [bookId]);
+  const [book, setBook] = useState(null);
+  const [isLoadingBook, setIsLoadingBook] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
   // 2. States
-  const [activeChapterIndex, setActiveChapterIndex] = useState(() => {
-    const savedProgress = localStorage.getItem(`reader_progress_${bookId}`);
-    if (savedProgress) {
-      try {
-        const progress = JSON.parse(savedProgress);
-        return progress.chapterIndex ?? 0;
-      } catch {
-        return 0;
-      }
-    }
-    return 0;
-  });
+  const [activeChapterIndex, setActiveChapterIndex] = useState(() =>
+    getStoredChapterIndex(bookId),
+  );
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("toc"); // toc, settings, annotations
 
   // Reading preferences (loaded from localStorage if exists)
-  const [preferences, setPreferences] = useState(() => {
-    const saved = localStorage.getItem("reader_preferences");
-    return saved
-      ? JSON.parse(saved)
-      : {
-          theme: "sepia",
-          fontFamily: "serif",
-          fontSize: "medium",
-        };
-  });
+  const [preferences, setPreferences] = useState(() =>
+    getStoredJson("reader_preferences", {
+      theme: "sepia",
+      fontFamily: "open-sans",
+      fontSize: "medium",
+    }),
+  );
 
   // Annotations (highlights & notes) & Bookmarks loaded from localStorage
-  const [annotations, setAnnotations] = useState(() => {
-    const saved = localStorage.getItem(`reader_annotations_${bookId}`);
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [annotations, setAnnotations] = useState(() =>
+    getStoredJson(`reader_annotations_${bookId}`, []),
+  );
 
-  const [bookmarks, setBookmarks] = useState(() => {
-    const saved = localStorage.getItem(`reader_bookmarks_${bookId}`);
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [bookmarks, setBookmarks] = useState(() =>
+    getStoredJson(`reader_bookmarks_${bookId}`, []),
+  );
 
   // Dynamic selection tooltip state
   const [selectionData, setSelectionData] = useState(null); // { text, paragraphIndex, coords: {top, left} }
@@ -89,19 +176,190 @@ export default function ReaderPage() {
   const [viewingAnnotation, setViewingAnnotation] = useState(null);
 
   const contentRef = useRef(null);
+  const progressSaveTimerRef = useRef(null);
+  const highestProgressRef = useRef(getStoredHighestProgress(bookId));
 
   // CODE THÊM VÀO: State và logic cho Reading Progress
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const [highestProgress, setHighestProgress] = useState(() =>
+    getStoredHighestProgress(bookId),
+  );
+
+  const getChapterPersistenceId = (chapter) => {
+    if (!chapter?.id) {
+      return null;
+    }
+
+    if (typeof chapter.id === "number") {
+      return chapter.id;
+    }
+
+    return /^\d+$/.test(String(chapter.id)) ? Number(chapter.id) : null;
+  };
+
+  const buildOverallProgress = (chapterIndex, chapterScrollProgress) => {
+    const totalChapters = book?.tableOfContents?.length || 1;
+    const currentChapterOffset = Math.max(0, Math.min(chapterIndex, totalChapters - 1));
+    const currentScrollRatio = Math.max(0, Math.min(chapterScrollProgress, 100)) / 100;
+    const overallProgress =
+      ((currentChapterOffset + currentScrollRatio) / totalChapters) * 100;
+
+    return clampProgress(overallProgress.toFixed(2));
+  };
+
+  const persistLocalProgress = (chapterIndex, nextHighestProgress) => {
+    localStorage.setItem(
+      `reader_progress_${bookId}`,
+      JSON.stringify({
+        chapterIndex,
+        highestProgress: clampProgress(nextHighestProgress),
+        updatedAt: new Date().toISOString(),
+      }),
+    );
+  };
+
+  const applyHighestProgress = (nextProgress, chapterIndex) => {
+    const nextHighestProgress = Math.max(
+      highestProgressRef.current,
+      clampProgress(nextProgress),
+    );
+    highestProgressRef.current = nextHighestProgress;
+    setHighestProgress(nextHighestProgress);
+    persistLocalProgress(chapterIndex, nextHighestProgress);
+    return nextHighestProgress;
+  };
+
+  const scheduleProgressSave = (
+    chapterScrollProgress,
+    chapterIndex = activeChapterIndex,
+    savedPercentComplete = buildOverallProgress(chapterIndex, chapterScrollProgress),
+  ) => {
+    if (!book?.id) {
+      return;
+    }
+
+    if (progressSaveTimerRef.current) {
+      window.clearTimeout(progressSaveTimerRef.current);
+    }
+
+    const chapter = book.tableOfContents?.[chapterIndex] || null;
+
+    progressSaveTimerRef.current = window.setTimeout(() => {
+      axiosClient
+        .post("/reading-progress/", {
+          book: book.id,
+          chapter: getChapterPersistenceId(chapter),
+          cfi_position: JSON.stringify({
+            chapterIndex,
+            scrollProgress: chapterScrollProgress,
+          }),
+          percent_complete: savedPercentComplete,
+        })
+        .catch(() => {});
+    }, 700);
+  };
 
   const handleScroll = () => {
     if (contentRef.current) {
       const { scrollTop, scrollHeight, clientHeight } = contentRef.current;
       const progress = (scrollTop / (scrollHeight - clientHeight)) * 100;
-      setScrollProgress(isNaN(progress) ? 0 : progress);
+      const nextProgress = isNaN(progress) ? 0 : Math.max(0, Math.min(progress, 100));
+      const previousHighestProgress = highestProgressRef.current;
+      const currentOverallProgress = buildOverallProgress(
+        activeChapterIndex,
+        nextProgress,
+      );
+      const nextHighestProgress = applyHighestProgress(
+        currentOverallProgress,
+        activeChapterIndex,
+      );
+      if (currentOverallProgress >= previousHighestProgress) {
+        scheduleProgressSave(
+          nextProgress,
+          activeChapterIndex,
+          nextHighestProgress,
+        );
+      }
     }
   };
 
   // 3. Effects
+  useEffect(() => {
+    const resetTimer = window.setTimeout(() => {
+      setActiveChapterIndex(getStoredChapterIndex(bookId));
+      setAnnotations(getStoredJson(`reader_annotations_${bookId}`, []));
+      setBookmarks(getStoredJson(`reader_bookmarks_${bookId}`, []));
+      highestProgressRef.current = getStoredHighestProgress(bookId);
+      setHighestProgress(highestProgressRef.current);
+    }, 0);
+
+    return () => window.clearTimeout(resetTimer);
+  }, [bookId]);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    const loadTimer = window.setTimeout(() => {
+      if (!Number.isFinite(bookId)) {
+        setBook(null);
+        setLoadError("Đường dẫn sách không hợp lệ.");
+        setIsLoadingBook(false);
+        return;
+      }
+
+      setIsLoadingBook(true);
+      setLoadError("");
+
+      axiosClient
+        .get(`/library/books/${bookId}/`)
+        .then((payload) => {
+          if (isCancelled) {
+            return;
+          }
+
+          const nextBook = mapLibraryBook(payload);
+          const nextHighestProgress = Math.max(
+            getStoredHighestProgress(bookId),
+            nextBook.savedProgress,
+          );
+          highestProgressRef.current = nextHighestProgress;
+          setBook(nextBook);
+          setHighestProgress(nextHighestProgress);
+          localStorage.setItem(
+            `reader_progress_${bookId}`,
+            JSON.stringify({
+              chapterIndex: getStoredChapterIndex(bookId),
+              highestProgress: clampProgress(nextHighestProgress),
+              updatedAt: new Date().toISOString(),
+            }),
+          );
+          setActiveChapterIndex((currentIndex) =>
+            Math.min(currentIndex, nextBook.tableOfContents.length - 1),
+          );
+        })
+        .catch((error) => {
+          if (isCancelled) {
+            return;
+          }
+
+          setBook(null);
+          setLoadError(
+            error.response?.data?.detail ||
+              "Không thể tải sách từ thư viện của bạn.",
+          );
+        })
+        .finally(() => {
+          if (!isCancelled) {
+            setIsLoadingBook(false);
+          }
+        });
+    }, 0);
+
+    return () => {
+      isCancelled = true;
+      window.clearTimeout(loadTimer);
+    };
+  }, [bookId]);
+
   useEffect(() => {
     localStorage.setItem("reader_preferences", JSON.stringify(preferences));
   }, [preferences]);
@@ -120,17 +378,24 @@ export default function ReaderPage() {
     );
   }, [bookmarks, bookId]);
 
+  useEffect(() => {
+    return () => {
+      if (progressSaveTimerRef.current) {
+        window.clearTimeout(progressSaveTimerRef.current);
+      }
+    };
+  }, []);
+
   // Load last read chapter from progress tracking is handled by the activeChapterIndex initializer above.
 
   // Save current progress on chapter change
   const handleChapterChange = (index) => {
     setActiveChapterIndex(index);
-    localStorage.setItem(
-      `reader_progress_${bookId}`,
-      JSON.stringify({
-        chapterIndex: index,
-        updatedAt: new Date().toISOString(),
-      }),
+    const previousHighestProgress = highestProgressRef.current;
+    const currentOverallProgress = buildOverallProgress(index, 0);
+    const nextHighestProgress = applyHighestProgress(
+      currentOverallProgress,
+      index,
     );
     // Scroll content back to top
     if (contentRef.current) {
@@ -138,6 +403,9 @@ export default function ReaderPage() {
     }
     // Close tooltip
     setShowTooltip(false);
+    if (currentOverallProgress >= previousHighestProgress) {
+      scheduleProgressSave(0, index, nextHighestProgress);
+    }
   };
 
   // 4. Generate dynamic chapter content
@@ -154,20 +422,42 @@ export default function ReaderPage() {
       return [];
     }
 
+    if (activeChapter.paragraphs?.length) {
+      return activeChapter.paragraphs;
+    }
+
+    const descriptionParagraphs = book.description
+      ? book.description
+          .split(/\n+/)
+          .map((paragraph) => paragraph.trim())
+          .filter(Boolean)
+      : [];
+
+    if (descriptionParagraphs.length) {
+      return descriptionParagraphs;
+    }
+
     return [
-      `Chào mừng bạn đến với chương "${activeChapter.title}" của cuốn sách "${book.title}". Đây là phần nội dung được hiển thị dưới dạng bản dùng thử mô phỏng trải nghiệm đọc sách thực tế trên BookVerse.`,
-      `Trong phần này, tác giả ${book.author} sẽ dẫn dắt chúng ta đi qua những góc nhìn độc đáo liên quan đến đề tài này. Bằng việc kết hợp giữa lý luận lý thuyết và các nghiên cứu điển hình trực quan, người đọc sẽ dễ dàng kết nối lý thuyết vào thực tiễn cuộc sống.`,
-      `Để tối ưu hóa trải nghiệm đọc sách của riêng bạn, hãy sử dụng bảng điều khiển tùy chọn ở góc bên trái. Bạn có thể tự do thay đổi kích thước chữ (Font Size), thay đổi kiểu phông chữ Serif hoặc Sans-serif và chuyển đổi các chế độ màu nền (Sáng, Tối, Sepia) giúp chống mỏi mắt hiệu quả.`,
-      `Đặc biệt, hệ thống đọc sách thông minh này cho phép bạn tương tác trực tiếp với văn bản. Hãy thử bôi đen bất kỳ đoạn văn bản nào trên màn hình này: một thanh công cụ tô màu (Highlighter) sẽ hiện lên ngay lập tức. Bạn có thể đánh dấu bằng nhiều màu sắc sinh động, hoặc thêm các dòng ghi chú (Notes) để lưu trữ suy nghĩ cá nhân của mình.`,
-      `Tất cả các dòng đánh dấu nổi bật và ghi chú này sẽ được tự động tổng hợp đầy đủ trong tab "Đánh dấu & Note" bên trái để bạn dễ dàng quản lý và ôn tập bất cứ lúc nào. Chúc bạn có một hành trình đọc sách thật thú vị và thu hoạch được nhiều kiến thức bổ ích cùng BookVerse!`,
+      book.readerMessage ||
+        `Nội dung chương "${activeChapter.title}" chưa được trích xuất để đọc trực tiếp trên web.`,
+      "Nếu muốn đọc trực tiếp trong Reader, hãy upload thêm file EPUB hoặc PDF có text có thể trích xuất.",
     ];
   }, [activeChapter, book]);
+
+  if (isLoadingBook) {
+    return (
+      <div className="reader-error">
+        <h2>Đang tải sách</h2>
+        <p>Readify đang lấy dữ liệu từ thư viện của bạn.</p>
+      </div>
+    );
+  }
 
   if (!book) {
     return (
       <div className="reader-error">
         <h2>Không tìm thấy sách</h2>
-        <p>Cuốn sách bạn yêu cầu không tồn tại hoặc chưa được mua.</p>
+        <p>{loadError || "Cuốn sách bạn yêu cầu không tồn tại hoặc chưa được mua."}</p>
         <Link to="/library" className="btn btn-primary">
           Quay lại Thư viện
         </Link>
@@ -383,7 +673,8 @@ export default function ReaderPage() {
     THEMES.find((t) => t.id === preferences.theme)?.class ||
     "reader-theme--sepia";
   const activeFontFamily =
-    FONTS.find((f) => f.id === preferences.fontFamily)?.family || "serif";
+    FONTS.find((f) => f.id === preferences.fontFamily)?.family ||
+    "'Open Sans', system-ui, sans-serif";
   const activeFontSizeValue =
     FONT_SIZES.find((s) => s.id === preferences.fontSize)?.size || "1.1rem";
 
@@ -400,6 +691,19 @@ export default function ReaderPage() {
             ‹ Thư viện
           </Link>
           <div className="reader-header__divider" />
+          <button
+            onClick={() => setSidebarOpen(!sidebarOpen)}
+            className={`reader-icon-btn reader-sidebar-toggle-btn ${sidebarOpen ? "reader-sidebar-toggle-btn--active" : ""}`}
+            title="Đóng/Mở thanh công cụ"
+            aria-label="Đóng/Mở thanh công cụ"
+            aria-pressed={sidebarOpen}
+          >
+            <span className="reader-menu-icon" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+            </span>
+          </button>
           <h2 className="reader-header__book-title">{book.title}</h2>
         </div>
         <div className="reader-header__center">
@@ -416,15 +720,10 @@ export default function ReaderPage() {
                 ? "Bỏ đánh dấu chương này"
                 : "Đánh dấu chương này"
             }
+            aria-pressed={isCurrentChapterBookmarked}
           >
-            🔖
-          </button>
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className={`reader-icon-btn reader-sidebar-toggle-btn ${sidebarOpen ? "reader-sidebar-toggle-btn--active" : ""}`}
-            title="Đóng/Mở thanh công cụ"
-          >
-            ⚙️ Menu
+            <span className="reader-bookmark-icon" aria-hidden="true" />
+            <span>Bookmark</span>
           </button>
         </div>
       </header>
@@ -433,9 +732,9 @@ export default function ReaderPage() {
       <div style={{ width: "100%", height: "4px", backgroundColor: "#e0e0e0", zIndex: 10 }}>
         <div
           style={{
-            width: `${scrollProgress}%`,
+            width: `${highestProgress}%`,
             height: "100%",
-            backgroundColor: "var(--primary-color, #007bff)",
+            backgroundColor: "var(--accent)",
             transition: "width 0.1s ease-out",
           }}
         />
@@ -672,6 +971,17 @@ export default function ReaderPage() {
               <h1 className="reader-chapter-title-main">
                 {activeChapter.title}
               </h1>
+              {book.hasReaderContent && (
+                <p className="reader-source-note">
+                  Đang đọc từ file {book.readerSourceFormat}
+                  {book.readerIsTruncated ? " - nội dung dài đã được giới hạn để tải nhanh hơn." : ""}
+                </p>
+              )}
+              {!book.hasReaderContent && book.readerMessage && (
+                <p className="reader-source-note reader-source-note--warning">
+                  {book.readerMessage}
+                </p>
+              )}
               <div className="reader-chapter-separator" />
 
               <div className="reader-paragraphs-container">

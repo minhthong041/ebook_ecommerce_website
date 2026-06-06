@@ -4,11 +4,27 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="BookVerse – Nền tảng mua và đọc ebook hàng đầu Việt Nam. Hàng nghìn đầu sách hay, đọc mọi lúc mọi nơi." />
-    <title>BookVerse – Đọc sách không giới hạn</title>
+    <meta name="description" content="Readify – Nền tảng mua và đọc ebook hàng đầu Việt Nam. Hàng nghìn đầu sách hay, đọc mọi lúc mọi nơi." />
+    <title>Readify – Đọc sách không giới hạn</title>
+    <script>
+      (() => {
+        try {
+          const appearance = localStorage.getItem("readify_appearance") || "system";
+          const language = localStorage.getItem("readify_language") || "vi";
+          const prefersDark = window.matchMedia?.("(prefers-color-scheme: dark)").matches;
+          const theme = appearance === "system" ? (prefersDark ? "dark" : "light") : appearance;
+          document.documentElement.dataset.theme = theme === "dark" ? "dark" : "light";
+          document.documentElement.dataset.appearance = appearance;
+          document.documentElement.lang = language === "en" ? "en" : "vi";
+          document.documentElement.style.colorScheme = theme === "dark" ? "dark" : "light";
+        } catch {
+          document.documentElement.dataset.theme = "light";
+        }
+      })();
+    </script>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&family=Open+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div id="root"></div>

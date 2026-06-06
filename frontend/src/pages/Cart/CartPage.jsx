@@ -1,17 +1,19 @@
-import { useMemo, useState } from "react";
-// 🟢 SỬA DÒNG NÀY: Import thêm useNavigate
+import { useContext, useMemo } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { CART_ITEMS } from "../../data/cartData";
+import { AuthContext } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
 import "./CartPage.css";
 
-function CartRow({ item, onChangeQuantity, onRemove }) {
-  const itemTotal = item.price * item.quantity;
-
+function CartRow({ item, onRemove }) {
   return (
     <div className="cart-row">
       <div className="cart-row__book">
         <div className="cart-row__cover" aria-hidden="true">
-          {item.cover || "📘"}
+          {item.coverUrl ? (
+            <img src={item.coverUrl} alt="" />
+          ) : (
+            item.cover || "📘"
+          )}
         </div>
         <div className="cart-row__meta">
           <h3 className="cart-row__title">{item.title}</h3>
@@ -22,27 +24,10 @@ function CartRow({ item, onChangeQuantity, onRemove }) {
       <div className="cart-row__price">{item.price.toLocaleString("vi-VN")}₫</div>
 
       <div className="cart-row__quantity">
-        <button
-          type="button"
-          className="cart-qty-btn"
-          onClick={() => onChangeQuantity(item.id, item.quantity - 1)}
-          aria-label={`Giảm số lượng ${item.title}`}
-          disabled={item.quantity <= 1}
-        >
-          −
-        </button>
         <span className="cart-qty-value">{item.quantity}</span>
-        <button
-          type="button"
-          className="cart-qty-btn"
-          onClick={() => onChangeQuantity(item.id, item.quantity + 1)}
-          aria-label={`Tăng số lượng ${item.title}`}
-        >
-          +
-        </button>
       </div>
 
-      <div className="cart-row__total">{itemTotal.toLocaleString("vi-VN")}₫</div>
+      <div className="cart-row__total">{item.price.toLocaleString("vi-VN")}₫</div>
 
       <button
         type="button"
@@ -57,30 +42,25 @@ function CartRow({ item, onChangeQuantity, onRemove }) {
 }
 
 export default function CartPage() {
-  const [cartItems, setCartItems] = useState(CART_ITEMS);
-  // 🟢 THÊM DÒNG NÀY: Khởi tạo biến navigate
+  const { isAuthenticated } = useContext(AuthContext);
+  const {
+    items: cartItems,
+    isLoading,
+    error,
+    removeFromCart,
+  } = useCart();
   const navigate = useNavigate();
 
   const subtotal = useMemo(
-    () => cartItems.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    () => cartItems.reduce((sum, item) => sum + item.price, 0),
     [cartItems],
   );
 
-  const shipping = cartItems.length > 0 ? 18000 : 0;
+  const shipping = 0;
   const total = subtotal + shipping;
 
-  const handleChangeQuantity = (itemId, newQuantity) => {
-    setCartItems((prevItems) =>
-      prevItems.map((item) =>
-        item.id === itemId
-          ? { ...item, quantity: Math.max(1, newQuantity) }
-          : item,
-      ),
-    );
-  };
-
-  const handleRemove = (itemId) => {
-    setCartItems((prevItems) => prevItems.filter((item) => item.id !== itemId));
+  const handleRemove = async (itemId) => {
+    await removeFromCart(itemId);
   };
 
   return (
@@ -115,7 +95,34 @@ export default function CartPage() {
         </div>
       </div>
 
-      {cartItems.length > 0 ? (
+      {!isAuthenticated ? (
+        <section className="cart-empty container">
+          <div className="cart-empty__card glass-card">
+            <div className="cart-empty__icon">🔐</div>
+            <h2>Vui lòng đăng nhập</h2>
+            <p>Đăng nhập để xem và đồng bộ giỏ hàng ebook của bạn.</p>
+            <Link to="/login" className="btn btn-primary cart-empty__button">
+              Đăng nhập
+            </Link>
+          </div>
+        </section>
+      ) : isLoading ? (
+        <section className="cart-empty container">
+          <div className="cart-empty__card glass-card">
+            <div className="cart-empty__icon">⏳</div>
+            <h2>Đang tải giỏ hàng</h2>
+            <p>Đang đồng bộ giỏ hàng từ tài khoản của bạn.</p>
+          </div>
+        </section>
+      ) : error ? (
+        <section className="cart-empty container">
+          <div className="cart-empty__card glass-card">
+            <div className="cart-empty__icon">⚠️</div>
+            <h2>Không thể tải giỏ hàng</h2>
+            <p>{error}</p>
+          </div>
+        </section>
+      ) : cartItems.length > 0 ? (
         <div className="cart-layout container">
           <section className="cart-list">
             <div className="cart-list__header">
@@ -131,7 +138,6 @@ export default function CartPage() {
                 <CartRow
                   key={item.id}
                   item={item}
-                  onChangeQuantity={handleChangeQuantity}
                   onRemove={handleRemove}
                 />
               ))}
@@ -147,7 +153,7 @@ export default function CartPage() {
                 <span>{subtotal.toLocaleString("vi-VN")}₫</span>
               </div>
               <div className="cart-summary__row">
-                <span>Phí vận chuyển</span>
+                <span>Phí giao ebook</span>
                 <span>{shipping.toLocaleString("vi-VN")}₫</span>
               </div>
               <div className="cart-summary__divider" />
@@ -158,7 +164,6 @@ export default function CartPage() {
               <button
                 type="button"
                 className="btn btn-primary cart-summary__checkout"
-                // 🟢 SỬA DÒNG NÀY: Thêm sự kiện onClick để chuyển trang
                 onClick={() => navigate("/checkout")}
               >
                 Tiến hành thanh toán

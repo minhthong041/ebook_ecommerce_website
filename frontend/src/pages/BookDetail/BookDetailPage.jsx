@@ -1,19 +1,36 @@
-import { useMemo, useState } from "react";
-import { Link, useParams } from "react-router-dom";
+import { useContext, useEffect, useState } from "react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import BookCard from "../../components/BookCard/BookCard";
-import { BOOKS } from "../../data/bookData";
+import axiosClient from "../../api/axiosClient";
+import { AuthContext } from "../../context/AuthContext";
+import { useCart } from "../../context/CartContext";
 import "./BookDetailPage.css";
 
 const TABS = ["Mô tả", "Mục lục", "Đánh giá"];
 
+function buildReviewSummary(reviews = []) {
+  if (!reviews.length) {
+    return {
+      rating: 0,
+      reviewsCount: 0,
+    };
+  }
+
+  const totalRating = reviews.reduce((sum, review) => sum + Number(review.rating || 0), 0);
+  return {
+    rating: Number((totalRating / reviews.length).toFixed(1)),
+    reviewsCount: reviews.length,
+  };
+}
+
 function getAvatarGradient(username) {
   const gradients = [
-    "linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%)", // Coral/Peach
-    "linear-gradient(135deg, #4E65FF 0%, #92EFFD 100%)", // Blue/Aqua
-    "linear-gradient(135deg, #11998e 0%, #38ef7d 100%)", // Teal/Green
-    "linear-gradient(135deg, #8E2DE2 0%, #4A00E0 100%)", // Purple/Indigo
-    "linear-gradient(135deg, #f80759 0%, #bc4e9c 100%)", // Rose/Magenta
-    "linear-gradient(135deg, #F7971E 0%, #FFD200 100%)", // Gold/Amber
+    "linear-gradient(135deg, #F87171 0%, #FB7185 100%)",
+    "linear-gradient(135deg, #E75B5B 0%, #FDBA74 100%)",
+    "linear-gradient(135deg, #B42323 0%, #F97316 100%)",
+    "linear-gradient(135deg, #FB7185 0%, #FDA4AF 100%)",
+    "linear-gradient(135deg, #DC2626 0%, #FCA5A5 100%)",
+    "linear-gradient(135deg, #F97316 0%, #FECACA 100%)",
   ];
   let hash = 0;
   for (let i = 0; i < username.length; i++) {
@@ -22,19 +39,209 @@ function getAvatarGradient(username) {
   return gradients[hash % gradients.length];
 }
 
+function mapApiBookDetail(book) {
+  const price = Number(book.price || 0);
+  const authors = book.authors || [];
+  const categories = book.categories || [];
+  const formats = (book.ebook_files || [])
+    .map((ebookFile) => ebookFile.format_type?.name)
+    .filter(Boolean);
+  const chapters = book.chapters || [];
+  const reviews = book.reviews || [];
+  const reviewSummary = buildReviewSummary(reviews);
+
+  return {
+    id: book.id,
+    title: book.title,
+    author:
+      authors.map((author) => author.full_name).filter(Boolean).join(", ") ||
+      "Chưa cập nhật",
+    categoryLabel:
+      categories.map((category) => category.name).filter(Boolean).join(", ") ||
+      "Chưa phân loại",
+    price,
+    originalPrice: price,
+    rating: reviewSummary.rating,
+    reviewsCount: reviewSummary.reviewsCount,
+    formats,
+    previewText: book.preview_text || "",
+    previewSourceFormat: book.preview_source_format || "",
+    coverUrl: book.cover_url,
+    coverIcon: book.cover_url ? "" : "📚",
+    isBestseller: false,
+    isActive: book.is_active !== false,
+    publishDate: book.year_of_publication
+      ? `${book.year_of_publication}-01-01`
+      : "1970-01-01",
+    publisher: book.publisher?.name || "Chưa cập nhật",
+    description: book.description || "Chưa có mô tả cho sách này.",
+    isbn: "Chưa cập nhật",
+    pages: chapters.length || "Chưa cập nhật",
+    language: "Tiếng Việt",
+    tableOfContents:
+      chapters.length > 0
+        ? chapters.map((chapter) => ({
+            title: chapter.title,
+            page: chapter.order_index,
+          }))
+        : [{ title: "Nội dung đang được cập nhật", page: 1 }],
+    reviews,
+  };
+}
+
+function mapRelatedBook(book) {
+  const price = Number(book.price || 0);
+  return {
+    id: book.id,
+    title: book.title,
+    author:
+      (book.authors || [])
+        .map((author) => author.full_name)
+        .filter(Boolean)
+        .join(", ") || "Chưa cập nhật",
+    categoryLabel:
+      (book.categories || [])
+        .map((category) => category.name)
+        .filter(Boolean)
+        .join(", ") || "Chưa phân loại",
+    price,
+    originalPrice: price,
+    rating: Number(book.average_rating || 0),
+    reviewsCount: Number(book.review_count || 0),
+    formats: book.format_labels || [],
+    coverUrl: book.cover_url,
+    coverIcon: book.cover_url ? "" : "📚",
+    isBestseller: false,
+    isActive: book.is_active !== false,
+  };
+}
+
 export default function BookDetailPage() {
   const { id } = useParams();
+  const navigate = useNavigate();
+  const { isAuthenticated, isAuthReady } = useContext(AuthContext);
+  const { addToCart } = useCart();
   const bookId = Number(id);
-  const book = useMemo(
-    () => BOOKS.find((item) => item.id === bookId),
-    [bookId],
-  );
+  const [book, setBook] = useState(null);
+  const [relatedBooks, setRelatedBooks] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState("");
   const [activeTab, setActiveTab] = useState(TABS[0]);
-  const [selectedFormat, setSelectedFormat] = useState(
-    book?.formats?.[0] || "",
-  );
   const [isWishlisted, setIsWishlisted] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [cartNotice, setCartNotice] = useState("");
+  const [cartError, setCartError] = useState("");
+  const [isAddingToCart, setIsAddingToCart] = useState(false);
+  const [reportNotice, setReportNotice] = useState("");
+  const [reportError, setReportError] = useState("");
+  const [reportingReviewId, setReportingReviewId] = useState(null);
+
+  useEffect(() => {
+    const loadBookTimer = window.setTimeout(async () => {
+      setIsLoading(true);
+      setLoadError("");
+      try {
+        const [bookResponse, relatedResponse] = await Promise.all([
+          axiosClient.get(`/books/${bookId}/`),
+          axiosClient.get("/books/", { params: { page_size: 4 } }),
+        ]);
+        const mappedBook = mapApiBookDetail(bookResponse);
+        const relatedApiBooks = relatedResponse.results || relatedResponse;
+        setBook(mappedBook);
+        setRelatedBooks(
+          Array.isArray(relatedApiBooks)
+            ? relatedApiBooks
+                .filter((related) => related.id !== bookId)
+                .slice(0, 3)
+                .map(mapRelatedBook)
+            : [],
+        );
+      } catch {
+        setBook(null);
+        setLoadError("Không thể tải chi tiết sách từ API.");
+      } finally {
+        setIsLoading(false);
+      }
+    }, 0);
+
+    return () => window.clearTimeout(loadBookTimer);
+  }, [bookId]);
+
+  useEffect(() => {
+    if (!isAuthReady || !book?.id) {
+      return;
+    }
+
+    let isMounted = true;
+    const loadUserBookStateTimer = window.setTimeout(async () => {
+      if (!isAuthenticated) {
+        if (isMounted) {
+          setIsWishlisted(false);
+          setBook((currentBook) =>
+            currentBook
+              ? { ...currentBook, isPurchased: false, hasPendingOrder: false }
+              : currentBook,
+          );
+        }
+        return;
+      }
+
+      try {
+        const [wishlistResponse, libraryResponse, ordersResponse] = await Promise.all([
+          axiosClient.get("/wishlists/"),
+          axiosClient.get("/library/"),
+          axiosClient.get("/orders/", { params: { status: "pending" } }),
+        ]);
+        const wishlistIds = new Set((wishlistResponse.book_ids || []).map(Number));
+        const purchasedIds = new Set(
+          (Array.isArray(libraryResponse) ? libraryResponse : [])
+            .flatMap((library) => library.items || [])
+            .map((item) => Number(item.book_id))
+            .filter(Boolean),
+        );
+        const pendingIds = new Set(
+          (Array.isArray(ordersResponse) ? ordersResponse : [])
+            .flatMap((order) => order.items || [])
+            .map((item) => Number(item.book_id))
+            .filter(Boolean),
+        );
+        if (isMounted) {
+          setIsWishlisted(wishlistIds.has(bookId));
+          setBook((currentBook) =>
+            currentBook
+              ? {
+                  ...currentBook,
+                  isPurchased: purchasedIds.has(bookId),
+                  hasPendingOrder: pendingIds.has(bookId),
+                }
+              : currentBook,
+          );
+        }
+      } catch {
+        if (isMounted) {
+          setIsWishlisted(false);
+        }
+      }
+    }, 0);
+
+    return () => {
+      isMounted = false;
+      window.clearTimeout(loadUserBookStateTimer);
+    };
+  }, [book?.id, bookId, isAuthReady, isAuthenticated]);
+
+  if (isLoading) {
+    return (
+      <div className="book-detail">
+        <div className="container">
+          <div style={{ padding: "80px 0", textAlign: "center" }}>
+            <h2>Đang tải sách</h2>
+            <p>Đang lấy dữ liệu chi tiết từ backend API.</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (!book) {
     return (
@@ -53,7 +260,10 @@ export default function BookDetailPage() {
           </div>
           <div style={{ padding: "80px 0", textAlign: "center" }}>
             <h2>Không tìm thấy sách</h2>
-            <p>Cuốn sách bạn tìm không tồn tại hoặc đã bị xóa.</p>
+            <p>
+              {loadError ||
+                "Cuốn sách bạn tìm không tồn tại hoặc đã bị xóa."}
+            </p>
             <Link to="/browse" className="btn btn-primary">
               Quay lại Browse
             </Link>
@@ -67,8 +277,115 @@ export default function BookDetailPage() {
   const discountPercent = hasDiscount
     ? Math.round(((book.originalPrice - book.price) / book.originalPrice) * 100)
     : 0;
+  const hasReviews = book.reviewsCount > 0;
+  const previewParagraphs = book.previewText
+    ? book.previewText
+        .split(/\n{2,}/)
+        .map((paragraph) => paragraph.trim())
+        .filter(Boolean)
+    : [];
 
-  const relatedBooks = BOOKS.filter((item) => item.id !== book.id).slice(0, 3);
+  const handleAddToCart = async (targetBook, { goToCart = false } = {}) => {
+    if (!targetBook.isActive) {
+      setCartNotice("");
+      setCartError(`"${targetBook.title}" hiện không khả dụng.`);
+      return;
+    }
+
+    if (targetBook.isPurchased) {
+      setCartNotice(`"${targetBook.title}" đã có trong thư viện của bạn.`);
+      setCartError("");
+      return;
+    }
+
+    if (targetBook.hasPendingOrder) {
+      setCartNotice("");
+      setCartError(`"${targetBook.title}" đang có đơn chờ thanh toán.`);
+      return;
+    }
+
+    setCartNotice("");
+    setCartError("");
+    setIsAddingToCart(true);
+    try {
+      const result = await addToCart(targetBook);
+      if (result.status === "duplicate") {
+        setCartNotice(result.message);
+      } else {
+        setCartNotice(`Đã thêm "${targetBook.title}" vào giỏ hàng.`);
+      }
+      if (goToCart) {
+        navigate("/cart");
+      }
+    } catch (error) {
+      if (error.code === "LOGIN_REQUIRED") {
+        navigate("/login");
+        return;
+      }
+      setCartError(error.message || "Không thể thêm sách vào giỏ hàng.");
+    } finally {
+      setIsAddingToCart(false);
+    }
+  };
+
+  const handleWishlistToggle = async () => {
+    if (!isAuthenticated) {
+      navigate("/login");
+      return;
+    }
+
+    const nextWishlisted = !isWishlisted;
+    setIsWishlisted(nextWishlisted);
+    setCartNotice("");
+    setCartError("");
+    try {
+      if (nextWishlisted) {
+        await axiosClient.post("/wishlists/", { book_id: book.id });
+        setCartNotice("Đã thêm sách vào danh sách yêu thích.");
+      } else {
+        await axiosClient.delete(`/wishlists/${book.id}/`);
+        setCartNotice("Đã bỏ sách khỏi danh sách yêu thích.");
+      }
+    } catch (error) {
+      setIsWishlisted(!nextWishlisted);
+      setCartError(
+        error.response?.data?.detail ||
+          "Không thể cập nhật danh sách yêu thích.",
+      );
+    }
+  };
+
+  const handleReportReview = async (review) => {
+    setReportNotice("");
+    setReportError("");
+    setReportingReviewId(review.id);
+    try {
+      await axiosClient.post(`/book-reviews/${review.id}/report/`);
+      setBook((currentBook) => {
+        if (!currentBook) {
+          return currentBook;
+        }
+        const remainingReviews = currentBook.reviews.filter(
+          (currentReview) => currentReview.id !== review.id,
+        );
+        const reviewSummary = buildReviewSummary(remainingReviews);
+        return {
+          ...currentBook,
+          reviews: remainingReviews,
+          rating: reviewSummary.rating,
+          reviewsCount: reviewSummary.reviewsCount,
+        };
+      });
+      setReportNotice("Đã gửi báo cáo. Đội ngũ quản trị sẽ kiểm tra đánh giá này.");
+    } catch (error) {
+      setReportError(
+        error.response?.data?.detail ||
+          "Không thể gửi báo cáo đánh giá. Vui lòng thử lại.",
+      );
+    } finally {
+      setReportingReviewId(null);
+    }
+  };
 
   return (
     <div className="book-detail">
@@ -126,13 +443,17 @@ export default function BookDetailPage() {
                   {book.author}
                 </Link>
               </span>
-              <span className="book-detail__rating-summary">
-                <span className="book-detail__stars">★</span>
-                {book.rating} • {book.reviewsCount} đánh giá
-              </span>
-              <span>
-                NXB: {new Date(book.publishDate).toLocaleDateString("vi-VN")}
-              </span>
+              {hasReviews ? (
+                <span className="book-detail__rating-summary">
+                  <span className="book-detail__stars">★</span>
+                  {book.rating} • {book.reviewsCount} đánh giá
+                </span>
+              ) : (
+                <span className="book-detail__rating-summary book-detail__rating-summary--empty">
+                  Chưa có đánh giá
+                </span>
+              )}
+              <span>NXB: {book.publisher}</span>
             </div>
 
             <div className="book-detail__price-container">
@@ -153,52 +474,85 @@ export default function BookDetailPage() {
 
             <p className="book-detail__short-desc">{book.description}</p>
 
+            {!book.isActive && (
+              <div className="book-detail__unavailable-message">
+                Sách hiện không khả dụng. Bạn vẫn có thể xem thông tin, nhưng chưa thể mua hoặc thêm vào giỏ hàng.
+              </div>
+            )}
+
             <div className="book-detail__formats-section">
-              <div className="book-detail__formats-title">Hình thức đọc khả dụng</div>
+              <div className="book-detail__formats-title">Quyền lợi sau khi mua</div>
               <div className="book-detail__formats-list">
-                {book.formats.map((format) => (
-                  <button
+                {book.formats.length > 0 ? book.formats.map((format) => (
+                  <div
                     key={format}
-                    type="button"
-                    className={`book-detail__format-card${selectedFormat === format ? " book-detail__format-card--active" : ""}`}
-                    onClick={() => setSelectedFormat(format)}
+                    className="book-detail__format-card"
                   >
                     <span className="book-detail__format-icon">
-                      {format === "PDF" ? "📄" : format === "EPUB" ? "📘" : "🎧"}
+                      {format === "PDF" ? "📄" : format === "EPUB" ? "📘" : "📱"}
                     </span>
                     <span className="book-detail__format-name">{format}</span>
-                    <span className="book-detail__format-price">
-                      {book.price.toLocaleString("vi-VN")}₫
-                    </span>
-                  </button>
-                ))}
+                    <span className="book-detail__format-price">Được bao gồm</span>
+                  </div>
+                )) : (
+                  <p className="book-detail__short-desc">
+                    Sách này chưa có file ebook khả dụng.
+                  </p>
+                )}
+                {book.formats.length > 0 && (
+                  <div className="book-detail__format-card book-detail__format-card--reader">
+                    <span className="book-detail__format-icon">🌐</span>
+                    <span className="book-detail__format-name">Web reader</span>
+                    <span className="book-detail__format-price">Đọc online</span>
+                  </div>
+                )}
               </div>
+              {book.formats.length > 0 && (
+                <p className="book-detail__formats-note">
+                  Một lần mua bao gồm toàn bộ định dạng sách đã upload và quyền đọc trực tiếp trên web.
+                </p>
+              )}
             </div>
 
             <div className="book-detail__actions">
               <button
                 type="button"
                 className="btn btn-primary book-detail__btn-buy"
-                onClick={() => console.log("Mua ngay:", book.title)}
+                disabled={isAddingToCart || !book.isActive || book.isPurchased || book.hasPendingOrder}
+                onClick={() => handleAddToCart(book, { goToCart: true })}
               >
-                Mua ngay
+                {!book.isActive
+                  ? "Không khả dụng"
+                  : book.isPurchased
+                    ? "Đã có trong thư viện"
+                    : book.hasPendingOrder
+                      ? "Đang chờ thanh toán"
+                      : "Mua trọn bộ ebook"}
               </button>
               <button
                 type="button"
                 className="btn btn-ghost book-detail__btn-cart"
-                onClick={() => console.log("Thêm vào giỏ:", book.title)}
+                disabled={isAddingToCart || !book.isActive || book.isPurchased || book.hasPendingOrder}
+                onClick={() => handleAddToCart(book)}
               >
-                Thêm vào giỏ
+                {isAddingToCart ? "Đang thêm..." : "Thêm bộ ebook vào giỏ"}
               </button>
               <button
                 type="button"
                 className={`book-detail__wish-btn${isWishlisted ? " book-detail__wish-btn--active" : ""}`}
                 aria-label="Yêu thích sách"
-                onClick={() => setIsWishlisted((prev) => !prev)}
+                onClick={handleWishlistToggle}
               >
                 ❤
               </button>
             </div>
+            {(cartNotice || cartError) && (
+              <div
+                className={`book-detail__cart-message${cartError ? " book-detail__cart-message--error" : ""}`}
+              >
+                {cartError || cartNotice}
+              </div>
+            )}
           </section>
         </div>
 
@@ -259,46 +613,76 @@ export default function BookDetailPage() {
 
             {activeTab === "Đánh giá" && (
               <div className="book-detail__tab-pane">
-                <div className="reviews-container">
-                  <div className="reviews-summary glass-card">
-                    <div className="reviews-summary__score">{book.rating}</div>
-                    <div className="reviews-summary__stars">
-                      {"★".repeat(Math.floor(book.rating))}
-                    </div>
-                    <div className="reviews-summary__total">
-                      trên {book.reviewsCount} lượt đánh giá
-                    </div>
+                {(reportNotice || reportError) && (
+                  <div
+                    className={`book-detail__review-report-message${
+                      reportError ? " book-detail__review-report-message--error" : ""
+                    }`}
+                  >
+                    {reportError || reportNotice}
                   </div>
-                  <div className="reviews-list">
-                    {book.reviews.map((review) => (
-                      <article
-                        key={`${review.user}-${review.date}`}
-                        className="review-item"
-                      >
-                        <div className="review-item__header">
-                          <div className="review-item__user-info">
-                            <div
-                              className="review-item__avatar"
-                              style={{ background: getAvatarGradient(review.user) }}
-                            >
-                              {review.user.slice(0, 1).toUpperCase()}
-                            </div>
-                            <div>
-                              <div className="review-item__username">
-                                {review.user}
+                )}
+                {hasReviews ? (
+                  <div className="reviews-container">
+                    <div className="reviews-summary glass-card">
+                      <div className="reviews-summary__score">{book.rating}</div>
+                      <div className="reviews-summary__stars">
+                        {"★".repeat(Math.floor(book.rating))}
+                      </div>
+                      <div className="reviews-summary__total">
+                        trên {book.reviewsCount} lượt đánh giá
+                      </div>
+                    </div>
+                    <div className="reviews-list">
+                      {book.reviews.map((review) => (
+                        <article
+                          key={review.id}
+                          className="review-item"
+                        >
+                          <div className="review-item__header">
+                            <div className="review-item__user-info">
+                              <div
+                                className="review-item__avatar"
+                                style={{ background: getAvatarGradient(review.user) }}
+                              >
+                                {review.user.slice(0, 1).toUpperCase()}
                               </div>
-                              <div className="review-item__stars">
-                                {"★".repeat(review.rating)}
+                              <div>
+                                <div className="review-item__username">
+                                  {review.user}
+                                </div>
+                                <div className="review-item__stars">
+                                  {"★".repeat(review.rating)}
+                                </div>
                               </div>
                             </div>
+                            <div className="review-item__date">{review.date}</div>
                           </div>
-                          <div className="review-item__date">{review.date}</div>
-                        </div>
-                        <p className="review-item__content">{review.comment}</p>
-                      </article>
-                    ))}
+                          {review.title && (
+                            <h4 className="review-item__title">{review.title}</h4>
+                          )}
+                          <p className="review-item__content">{review.comment}</p>
+                          <button
+                            type="button"
+                            className="review-item__report-button"
+                            disabled={reportingReviewId === review.id}
+                            onClick={() => handleReportReview(review)}
+                          >
+                            {reportingReviewId === review.id
+                              ? "Đang báo cáo..."
+                              : "Báo cáo nội dung xấu"}
+                          </button>
+                        </article>
+                      ))}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="reviews-empty glass-card">
+                    <div className="reviews-empty__icon">☆</div>
+                    <h3>Chưa có đánh giá</h3>
+                    <p>Cuốn sách này chưa có lượt đánh giá nào từ độc giả.</p>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -318,9 +702,7 @@ export default function BookDetailPage() {
                   viewMode="grid"
                   isWishlisted={false}
                   onWishlistToggle={() => {}}
-                  onAddToCart={() =>
-                    console.log("Thêm vào giỏ:", related.title)
-                  }
+                  onAddToCart={() => handleAddToCart(related)}
                 />
               </Link>
             ))}
@@ -346,20 +728,28 @@ export default function BookDetailPage() {
               </button>
             </div>
             <div className="preview-modal__body">
-              <p className="preview-modal__sample-p">
-                "Đây là một phần mở đầu mẫu để bạn cảm nhận phong cách viết và
-                cách trình bày của cuốn sách. Nội dung này chỉ mang tính minh
-                họa cho trải nghiệm người dùng."
-              </p>
-              <p className="preview-modal__sample-p">
-                "Với mỗi định dạng sách mua tại BookVerse, bạn có thể lựa chọn đọc ebook theo cách phù
-                hợp nhất trên mọi trình duyệt web. Hãy tận dụng bộ lọc và tìm hiểu thêm về sách trong
-                phần thông tin chi tiết."
-              </p>
-              <p className="preview-modal__sample-p">
-                "Chúc bạn có trải nghiệm đọc sách tuyệt vời và nhanh chóng tìm
-                được đầu sách ưng ý trong tủ sách BookVerse."
-              </p>
+              {previewParagraphs.length > 0 ? (
+                <>
+                  {book.previewSourceFormat && (
+                    <p className="preview-modal__source">
+                      Trích từ file {book.previewSourceFormat}
+                    </p>
+                  )}
+                  {previewParagraphs.map((paragraph, index) => (
+                    <p key={`${paragraph.slice(0, 24)}-${index}`} className="preview-modal__sample-p">
+                      {paragraph}
+                    </p>
+                  ))}
+                </>
+              ) : (
+                <div className="preview-modal__empty">
+                  <h3>Chưa có nội dung đọc thử</h3>
+                  <p>
+                    Backend chưa trích được phần đầu từ file ebook. Hãy ưu tiên upload EPUB hoặc PDF
+                    có text để hệ thống tạo preview tự động.
+                  </p>
+                </div>
+              )}
             </div>
             <div className="preview-modal__footer">
               <button

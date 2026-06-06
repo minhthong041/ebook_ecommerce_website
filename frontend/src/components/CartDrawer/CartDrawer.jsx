@@ -1,15 +1,17 @@
 import { useMemo } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import "./CartDrawer.css";
 
-function CartRow({ item, onChangeQuantity, onRemove }) {
-  const itemTotal = item.price * item.quantity;
-
+function CartRow({ item, onRemove }) {
   return (
     <div className="cart-drawer-row">
       <div className="cart-drawer-row__book">
         <div className="cart-drawer-row__cover" aria-hidden="true">
-          {item.cover}
+          {item.coverUrl ? (
+            <img src={item.coverUrl} alt="" />
+          ) : (
+            item.cover || "📘"
+          )}
         </div>
         <div className="cart-drawer-row__meta">
           <h3>{item.title}</h3>
@@ -22,30 +24,11 @@ function CartRow({ item, onChangeQuantity, onRemove }) {
       </div>
 
       <div className="cart-drawer-row__quantity">
-        <button
-          type="button"
-          className="cart-drawer-row__qty-btn"
-          onClick={() =>
-            onChangeQuantity(item.id, Math.max(1, item.quantity - 1))
-          }
-          aria-label={`Giảm số lượng ${item.title}`}
-          disabled={item.quantity <= 1}
-        >
-          −
-        </button>
         <span>{item.quantity}</span>
-        <button
-          type="button"
-          className="cart-drawer-row__qty-btn"
-          onClick={() => onChangeQuantity(item.id, item.quantity + 1)}
-          aria-label={`Tăng số lượng ${item.title}`}
-        >
-          +
-        </button>
       </div>
 
       <div className="cart-drawer-row__total">
-        {itemTotal.toLocaleString()}₫
+        {item.price.toLocaleString()}₫
       </div>
 
       <button
@@ -62,18 +45,19 @@ function CartRow({ item, onChangeQuantity, onRemove }) {
 export default function CartDrawer({
   isOpen,
   items,
+  isLoading = false,
   onClose,
-  onChangeQuantity,
   onRemove,
 }) {
+  const navigate = useNavigate();
   const subtotal = useMemo(
-    () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
+    () => items.reduce((sum, item) => sum + item.price, 0),
     [items],
   );
 
-  const shipping = items.length > 0 ? 18000 : 0;
+  const shipping = 0;
   const total = subtotal + shipping;
-  const itemCount = items.reduce((sum, item) => sum + item.quantity, 0);
+  const itemCount = items.length;
 
   return (
     <>
@@ -105,14 +89,21 @@ export default function CartDrawer({
           </button>
         </div>
 
-        {items.length > 0 ? (
+        {isLoading ? (
+          <div className="cart-drawer__empty">
+            <div className="cart-drawer__empty-icon" aria-hidden="true">
+              ⏳
+            </div>
+            <h3>Đang tải giỏ hàng</h3>
+            <p>Đang đồng bộ giỏ hàng từ tài khoản của bạn.</p>
+          </div>
+        ) : items.length > 0 ? (
           <>
             <div className="cart-drawer__list">
               {items.map((item) => (
                 <CartRow
                   key={item.id}
                   item={item}
-                  onChangeQuantity={onChangeQuantity}
                   onRemove={onRemove}
                 />
               ))}
@@ -124,7 +115,7 @@ export default function CartDrawer({
                 <span>{subtotal.toLocaleString()}₫</span>
               </div>
               <div className="cart-drawer__summary-row">
-                <span>Phí vận chuyển</span>
+                <span>Phí giao ebook</span>
                 <span>{shipping.toLocaleString()}₫</span>
               </div>
               <div className="cart-drawer__summary-row cart-drawer__summary-row--total">
@@ -134,6 +125,10 @@ export default function CartDrawer({
               <button
                 type="button"
                 className="btn btn-primary cart-drawer__checkout"
+                onClick={() => {
+                  onClose();
+                  navigate("/checkout");
+                }}
               >
                 Thanh toán
               </button>

@@ -1,5 +1,22 @@
-from django.core.validators import MinValueValidator
+from pathlib import Path
+from uuid import uuid4
+
+from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.utils.text import slugify
+
+
+def book_cover_upload_to(instance, filename):
+    extension = Path(filename).suffix.lower()
+    title = slugify(instance.title) or f"book-{instance.pk or 'new'}"
+    return f"covers/{title}-{uuid4().hex[:8]}{extension}"
+
+
+def ebook_file_upload_to(instance, filename):
+    extension = Path(filename).suffix.lower()
+    title = slugify(instance.book.title) or f"book-{instance.book_id}"
+    format_name = slugify(instance.format_type.name).lower() or "ebook"
+    return f"ebooks/{format_name}/{title}-{uuid4().hex[:8]}{extension}"
 
 
 class Publisher(models.Model):
@@ -84,6 +101,14 @@ class Book(models.Model):
     )
     year_of_publication = models.PositiveIntegerField(null=True, blank=True)
     description = models.TextField(blank=True)
+    is_active = models.BooleanField(default=True)
+    cover_image = models.ImageField(
+        upload_to=book_cover_upload_to,
+        max_length=500,
+        null=True,
+        blank=True,
+    )
+    book_image = models.JSONField(default=dict, blank=True)
 
     authors = models.ManyToManyField(
         Author,
@@ -224,7 +249,7 @@ class EbookFile(models.Model):
         db_column="format_type_id",
         related_name="ebook_files",
     )
-    file_url = models.CharField(max_length=500)
+    file_url = models.FileField(upload_to=ebook_file_upload_to, max_length=500)
     uploaded_at = models.DateTimeField(auto_now_add=True)
     file_size_bytes = models.BigIntegerField(
         null=True,
@@ -241,3 +266,68 @@ class EbookFile(models.Model):
 
     def __str__(self):
         return f"{self.book} - {self.format_type}"
+
+
+class BookReview(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Pending"
+        APPROVED = "approved", "Approved"
+        REJECTED = "rejected", "Rejected"
+        REPORTED = "reported", "Reported"
+        HIDDEN = "hidden", "Hidden"
+        DELETED = "deleted", "Deleted"
+
+    customer = models.ForeignKey(
+        "accounts.Customer",
+        on_delete=models.CASCADE,
+        db_column="customer_id",
+        related_name="book_reviews",
+    )
+    book = models.ForeignKey(
+        Book,
+        on_delete=models.CASCADE,
+        db_column="book_id",
+        related_name="reviews",
+    )
+    rating = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)]
+    )
+    title = models.CharField(max_length=255, blank=True, default="")
+    comment = models.TextField(blank=True, default="")
+    is_purchased = models.BooleanField(default=False)
+    status = models.CharField(
+        max_length=20,
+        choices=Status.choices,
+        default=Status.PENDING,
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = "book_reviews"
+        ordering = ["-created_at"]
+        unique_together = ("customer", "book")
+
+    def __str__(self):
+        return f"{self.customer} - {self.book}: {self.rating}"
+
+
+class Wishlist(models.Model):
+    customer = models.ForeignKey(
+        "accounts.Customer",
+        on_delete=models.CASCADE,
+        db_column="customer_id",
+        related_name="wishlists",
+    )
+    book = models.ForeignKey(
+        Book,
+        on_delete=models.CASCADE,
+        db_column="book_id",
+        related_name="wishlisted_by",
+    )
+
+    class Meta:
+        db_table = "wishlists"
+        unique_together = ("customer", "book")
+
+    def __str__(self):
+        return f"{self.customer} - {self.book}"

@@ -141,9 +141,11 @@ class ReadingProgress(models.Model):
     )
     chapter = models.ForeignKey(
         "catalog.BookChapter",
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
         db_column="chapter_id",
         related_name="reading_progress",
+        null=True,
+        blank=True,
     )
     cfi_position = models.CharField(max_length=255)
     percent_complete = models.DecimalField(

@@ -1,9 +1,18 @@
+from pathlib import Path
+import uuid
+
 from django.conf import settings
 from django.contrib.auth.models import AbstractUser
 from django.db import models
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-import uuid
+from django.utils.text import slugify
+
+
+def user_avatar_upload_to(instance, filename):
+    extension = Path(filename).suffix.lower()
+    username = slugify(instance.username) or f"user-{instance.pk or 'new'}"
+    return f"avatars/{username}-{uuid.uuid4().hex[:8]}{extension}"
 
 
 class Role(models.Model):
@@ -52,6 +61,13 @@ class RolePermission(models.Model):
 
 class User(AbstractUser):
     full_name = models.CharField(max_length=100)
+    avatar = models.ImageField(
+        upload_to=user_avatar_upload_to,
+        max_length=500,
+        null=True,
+        blank=True,
+    )
+    avatar_url = models.JSONField(default=dict, blank=True)
     role = models.ForeignKey(
         Role,
         on_delete=models.SET_NULL,

@@ -1,37 +1,105 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useState } from 'react';
+import { createContext, useCallback, useEffect, useMemo, useState } from 'react';
+import axiosClient from '../api/axiosClient';
 
 export const AuthContext = createContext(null);
 
+function getSavedUser() {
+  const savedUser = localStorage.getItem('user_info');
+  if (!savedUser) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(savedUser);
+  } catch {
+    localStorage.removeItem('user_info');
+    return null;
+  }
+}
+
 export const AuthProvider = ({ children }) => {
-  // Áp dụng Lazy Initial State: Kiểm tra token trực tiếp lúc khởi tạo state
-  // Cách này loại bỏ hoàn toàn lỗi "set-state-in-effect" của ESLint
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    const token = localStorage.getItem('access_token');
-    return !!token; // Trả về true nếu có token, ngược lại là false
-  });
+  const [user, setUser] = useState(getSavedUser);
+  const [isAuthenticated, setIsAuthenticated] = useState(() =>
+    Boolean(localStorage.getItem('user_info')),
+  );
+  const [isAuthReady, setIsAuthReady] = useState(() =>
+    !localStorage.getItem('user_info'),
+  );
 
-  const [user, setUser] = useState(() => {
-    const savedUser = localStorage.getItem('user_info');
-    return savedUser ? JSON.parse(savedUser) : null;
-  });
-
-  const login = (token, userData) => {
-    localStorage.setItem('access_token', token);
+  const updateUser = useCallback((userData) => {
     localStorage.setItem('user_info', JSON.stringify(userData));
-    setIsAuthenticated(true);
     setUser(userData);
-  };
+    setIsAuthenticated(true);
+  }, []);
 
-  const logout = () => {
+  const login = useCallback((userData) => {
+    updateUser(userData);
+  }, [updateUser]);
+
+  const clearAuthState = useCallback(() => {
     localStorage.removeItem('access_token');
     localStorage.removeItem('user_info');
     setIsAuthenticated(false);
     setUser(null);
-  };
+  }, []);
+
+  const logout = useCallback(async () => {
+    try {
+      await axiosClient.post('/auth/logout/', {}, { timeout: 3000 });
+    } catch {
+      // Frontend state should still be cleared if the logout request fails.
+    } finally {
+      clearAuthState();
+    }
+  }, [clearAuthState]);
+
+  useEffect(() => {
+    if (!localStorage.getItem('user_info')) {
+      return undefined;
+    }
+
+    let isMounted = true;
+
+    async function validateSavedSession() {
+      try {
+        const freshUser = await axiosClient.get('/auth/me/');
+        if (isMounted) {
+          updateUser(freshUser);
+        }
+      } catch {
+        if (isMounted) {
+          clearAuthState();
+        }
+      } finally {
+        if (isMounted) {
+          setIsAuthReady(true);
+        }
+      }
+    }
+
+    validateSavedSession();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [clearAuthState, updateUser]);
+
+  const contextValue = useMemo(
+    () => ({
+      isAuthenticated,
+      isAuthReady,
+      user,
+      login,
+      updateUser,
+      logout,
+      clearAuthState,
+    }),
+    [clearAuthState, isAuthenticated, isAuthReady, login, logout, updateUser, user],
+  );
 
   return (
-    <AuthContext.Provider value={{ isAuthenticated, user, login, logout }}>
+    <AuthContext.Provider value={contextValue}>
       {children}
     </AuthContext.Provider>
   );
