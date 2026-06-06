@@ -12,6 +12,9 @@ class BaseJWTAuthentication(authentication.BaseAuthentication):
     def get_token_from_request(self, request, cookie_name):
         return request.COOKIES.get(cookie_name)
 
+    def authenticate_header(self, request):
+        return 'Bearer'
+
     def decode_token(self, token, options=None):
         try:
             return jwt.decode(
@@ -26,6 +29,10 @@ class BaseJWTAuthentication(authentication.BaseAuthentication):
             raise AuthenticationFailed("Error decoding signature", code="token_invalid")
         except jwt.InvalidTokenError:
             raise AuthenticationFailed("Invalid token", code="token_invalid")
+
+    def enforce_csrf(self, request):
+        return None 
+
 
 
 class JWTAuthentication(BaseJWTAuthentication):
