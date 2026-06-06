@@ -22,12 +22,31 @@ from .models import (
 )
 
 
+class LibraryEbookFileDownloadSerializer(serializers.Serializer):
+    id = serializers.IntegerField()
+    format = serializers.SerializerMethodField()
+    file_size_bytes = serializers.IntegerField(allow_null=True)
+    download_url = serializers.SerializerMethodField()
+    download_name = serializers.SerializerMethodField()
+
+    def get_format(self, obj):
+        return obj.format_type.name if obj.format_type else ""
+
+    def get_download_url(self, obj):
+        return f"/library/books/{obj.book_id}/files/{obj.id}/download/"
+
+    def get_download_name(self, obj):
+        file_name = str(obj.file_url.name or "").split("/")[-1]
+        return file_name or f"ebook-{obj.book_id}-{obj.id}"
+
+
 class UserLibraryItemSerializer(serializers.ModelSerializer):
     book_id = serializers.IntegerField(source="book.id")
     book_title = serializers.CharField(source="book.title")
     is_active = serializers.BooleanField(source="book.is_active")
     authors = serializers.SerializerMethodField()
     cover_url = serializers.SerializerMethodField()
+    downloadable_files = serializers.SerializerMethodField()
     progress = serializers.SerializerMethodField()
     review = serializers.SerializerMethodField()
 
@@ -40,6 +59,7 @@ class UserLibraryItemSerializer(serializers.ModelSerializer):
             "is_active",
             "authors",
             "cover_url",
+            "downloadable_files",
             "progress",
             "review",
             "acquired_date",
@@ -60,6 +80,10 @@ class UserLibraryItemSerializer(serializers.ModelSerializer):
             return None
 
         return self._build_absolute_url(obj.book.cover_image.url)
+
+    def get_downloadable_files(self, obj):
+        ebook_files = obj.book.ebook_files.select_related("format_type").all()
+        return LibraryEbookFileDownloadSerializer(ebook_files, many=True).data
 
     def get_progress(self, obj):
         customer = self.context.get("customer")
@@ -119,7 +143,8 @@ class UserLibrarySerializer(serializers.ModelSerializer):
 
     def get_items(self, obj):
         items = obj.items.select_related("book").prefetch_related(
-            "book__book_authors__author"
+            "book__book_authors__author",
+            "book__ebook_files__format_type",
         ).all()
         return UserLibraryItemSerializer(
             items,
@@ -257,6 +282,7 @@ class LibraryBookDetailSerializer(serializers.Serializer):
     series = serializers.SerializerMethodField()
     chapters = BookChapterSerializer(source="book.chapters", many=True, read_only=True)
     ebook_files = EbookFileSerializer(source="book.ebook_files", many=True, read_only=True)
+    downloadable_files = serializers.SerializerMethodField()
     reader_source_format = serializers.SerializerMethodField()
     reader_chapters = serializers.SerializerMethodField()
     reader_is_truncated = serializers.SerializerMethodField()
@@ -289,6 +315,11 @@ class LibraryBookDetailSerializer(serializers.Serializer):
             }
             for bs in book.book_series.select_related("series").all()
         ]
+
+    def get_downloadable_files(self, obj):
+        book = obj["book"]
+        ebook_files = book.ebook_files.select_related("format_type").all()
+        return LibraryEbookFileDownloadSerializer(ebook_files, many=True).data
 
     def get_reader_source_format(self, obj):
         return self._get_reader_payload(obj)["source_format"]

@@ -3,11 +3,23 @@ import { Link } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
 import "./LibraryPage.css";
 
+const formatFileSize = (value) => {
+  const size = Number(value || 0);
+  if (!size) {
+    return "";
+  }
+  if (size < 1024 * 1024) {
+    return `${Math.max(1, Math.round(size / 1024))} KB`;
+  }
+  return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+};
+
 export default function LibraryPage() {
   const [libraries, setLibraries] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [feedback, setFeedback] = useState(null);
+  const [activeDownloadKey, setActiveDownloadKey] = useState("");
   const [reviewBook, setReviewBook] = useState(null);
   const [reviewRating, setReviewRating] = useState(5);
   const [reviewTitle, setReviewTitle] = useState("");
@@ -49,6 +61,9 @@ export default function LibraryPage() {
           progress: Number(item.progress || 0),
           review: item.review || null,
           coverUrl: item.cover_url || "",
+          downloadableFiles: Array.isArray(item.downloadable_files)
+            ? item.downloadable_files
+            : [],
           icon: "📘",
         })),
       ),
@@ -91,6 +106,56 @@ export default function LibraryPage() {
       type: "error",
       message: `"${book.title}" hiện không khả dụng.`,
     });
+  };
+
+  const handleDownloadFile = async (book, file) => {
+    setFeedback(null);
+
+    if (!book.isActive) {
+      setFeedback({
+        type: "error",
+        message: `"${book.title}" hiện không khả dụng.`,
+      });
+      return;
+    }
+
+    if (!file?.download_url) {
+      setFeedback({
+        type: "error",
+        message: "File sách chưa sẵn sàng để tải.",
+      });
+      return;
+    }
+
+    const downloadKey = `${book.id}-${file.id}`;
+    setActiveDownloadKey(downloadKey);
+    try {
+      const payload = await axiosClient.get(file.download_url, {
+        responseType: "blob",
+      });
+      const blob = payload instanceof Blob ? payload : new Blob([payload]);
+      const objectUrl = window.URL.createObjectURL(blob);
+      const anchor = document.createElement("a");
+      anchor.href = objectUrl;
+      anchor.download = file.download_name || `${book.title}.${file.format || "ebook"}`;
+      document.body.appendChild(anchor);
+      anchor.click();
+      anchor.remove();
+      window.URL.revokeObjectURL(objectUrl);
+      setFeedback({
+        type: "success",
+        message: `Đang tải file ${file.format || "ebook"} của "${book.title}".`,
+      });
+    } catch (error) {
+      setFeedback({
+        type: "error",
+        message:
+          error.response?.data?.detail ||
+          `Không thể tải file ${file.format || "ebook"}. Vui lòng thử lại.`,
+      });
+    } finally {
+      setActiveDownloadKey("");
+    }
   };
 
   const closeReviewModal = () => {
@@ -294,6 +359,36 @@ export default function LibraryPage() {
                 >
                   Đọc sách
                 </Link>
+                {book.downloadableFiles.length > 0 ? (
+                  <div className="library-downloads" aria-label="Tải file sách">
+                    {book.downloadableFiles.map((file) => {
+                      const downloadKey = `${book.id}-${file.id}`;
+                      return (
+                        <button
+                          key={file.id}
+                          type="button"
+                          className="library-downloads__button"
+                          onClick={() => handleDownloadFile(book, file)}
+                          disabled={
+                            activeDownloadKey === downloadKey || !book.isActive
+                          }
+                          title={
+                            file.file_size_bytes
+                              ? `${file.format} - ${formatFileSize(file.file_size_bytes)}`
+                              : `Tải ${file.format}`
+                          }
+                        >
+                          <span>⬇</span>
+                          <strong>{file.format || "FILE"}</strong>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p className="library-downloads__empty">
+                    Chưa có file tải xuống
+                  </p>
+                )}
                 <button
                   type="button"
                   className="btn btn-ghost library-book-actions__review"

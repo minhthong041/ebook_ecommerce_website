@@ -1,3 +1,8 @@
+import mimetypes
+from pathlib import Path
+
+from django.http import FileResponse
+from django.utils.text import slugify
 from django.db.models import Max
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
@@ -5,7 +10,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from accounts.authentications import JWTAuthentication
-from catalog.models import Book, BookReview
+from catalog.models import Book, BookReview, EbookFile
 from catalog.serializers import BookReviewSerializer
 
 from .models import (
@@ -98,8 +103,73 @@ class LibraryBookDetailView(APIView):
             "reading_progress": progress,
             "bookmarks": bookmarks,
             "annotations": annotations,
-        })
+        }, context={"request": request})
         return Response(serializer.data)
+
+
+class LibraryBookFileDownloadView(APIView):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, book_id, file_id):
+        customer = request.user.customer
+
+        if not _user_owns_book(customer, book_id):
+            return Response(
+                {"detail": "Book not found in your library."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            ebook_file = EbookFile.objects.select_related(
+                "book",
+                "format_type",
+            ).get(pk=file_id, book_id=book_id)
+        except EbookFile.DoesNotExist:
+            return Response(
+                {"detail": "File not found for this book."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if not ebook_file.book.is_active:
+            return Response(
+                {"detail": "Sách hiện không khả dụng."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not ebook_file.file_url:
+            return Response(
+                {"detail": "File sách chưa sẵn sàng để tải."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        try:
+            file_handle = ebook_file.file_url.open("rb")
+        except (FileNotFoundError, OSError, ValueError):
+            return Response(
+                {"detail": "File sách không tồn tại trên bộ nhớ lưu trữ."},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        original_name = str(ebook_file.file_url.name or "")
+        extension = Path(original_name).suffix.lower()
+        slug = slugify(ebook_file.book.title) or f"book-{book_id}"
+        format_label = (
+            ebook_file.format_type.name.lower()
+            if ebook_file.format_type and ebook_file.format_type.name
+            else "ebook"
+        )
+        filename = f"{slug}-{format_label}{extension}"
+        content_type = mimetypes.guess_type(filename)[0] or "application/octet-stream"
+
+        response = FileResponse(
+            file_handle,
+            as_attachment=True,
+            filename=filename,
+            content_type=content_type,
+        )
+        response["X-Readify-File-Format"] = format_label.upper()
+        return response
 
 
 class ReadingProgressCreateView(APIView):
