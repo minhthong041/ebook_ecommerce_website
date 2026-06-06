@@ -38,7 +38,6 @@ export const AuthProvider = ({ children }) => {
   }, [updateUser]);
 
   const clearAuthState = useCallback(() => {
-    localStorage.removeItem('access_token');
     localStorage.removeItem('user_info');
     setIsAuthenticated(false);
     setUser(null);
@@ -48,20 +47,18 @@ export const AuthProvider = ({ children }) => {
     try {
       await axiosClient.post('/auth/logout/', {}, { timeout: 3000 });
     } catch {
-      // Frontend state should still be cleared if the logout request fails.
+      // Logic gỡ local chạy trên mọi tình huống
     } finally {
       clearAuthState();
+      window.location.href = "/";
     }
   }, [clearAuthState]);
 
   useEffect(() => {
-    if (!localStorage.getItem('user_info')) {
-      return undefined;
-    }
-
     let isMounted = true;
 
     async function validateSavedSession() {
+      // Dù F5 chưa kịp load storage, cứ âm thầm gọi me xem Cookie có sống ko
       try {
         const freshUser = await axiosClient.get('/auth/me/');
         if (isMounted) {

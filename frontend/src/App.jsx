@@ -187,7 +187,7 @@ const router = createBrowserRouter([
       {
         path: "staff/orders",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["admin", "staff"]}>
             <StaffOrderManagement />
           </ProtectedRoute>
         ),
@@ -195,7 +195,7 @@ const router = createBrowserRouter([
       {
         path: "staff/books",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["admin", "staff"]}>
             <StaffBookManagement />
           </ProtectedRoute>
         ),
@@ -203,7 +203,7 @@ const router = createBrowserRouter([
       {
         path: "staff/books/upload",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["admin", "staff"]}>
             <StaffBookUpload />
           </ProtectedRoute>
         ),
@@ -211,7 +211,7 @@ const router = createBrowserRouter([
       {
         path: "staff/reviews",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["admin", "staff"]}>
             <StaffReviewManagement />
           </ProtectedRoute>
         ),
@@ -219,7 +219,7 @@ const router = createBrowserRouter([
       {
         path: "admin/categories",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <AdminCategoryManagement />
           </ProtectedRoute>
         ),
@@ -227,7 +227,7 @@ const router = createBrowserRouter([
       {
         path: "admin/promotions",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <AdminPromotionManagement />
           </ProtectedRoute>
         ),
@@ -235,7 +235,7 @@ const router = createBrowserRouter([
       {
         path: "admin/users",
         element: (
-          <ProtectedRoute>
+          <ProtectedRoute allowedRoles={["admin"]}>
             <AdminUserManagement />
           </ProtectedRoute>
         ),
