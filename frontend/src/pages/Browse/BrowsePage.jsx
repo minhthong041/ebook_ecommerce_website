@@ -1,5 +1,5 @@
 import { useContext, useEffect, useMemo, useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import BookCard from "../../components/BookCard/BookCard";
 import CategoryFilter from "../../components/CategoryFilter/CategoryFilter";
 import axiosClient from "../../api/axiosClient";
@@ -9,6 +9,7 @@ import "./BrowsePage.css";
 
 function mapApiBook(book) {
   const price = Number(book.price || 0);
+  const originalPrice = Number(book.original_price || book.price || 0);
   const authors = book.authors || [];
   const categories = book.categories || [];
   const formats = book.format_labels || [];
@@ -24,7 +25,7 @@ function mapApiBook(book) {
       categories.map((category) => category.name).filter(Boolean).join(", ") ||
       "Chưa phân loại",
     price,
-    originalPrice: price,
+    originalPrice,
     rating: Number(book.average_rating || 0),
     reviewsCount: Number(book.review_count || 0),
     formats,
@@ -39,8 +40,21 @@ function mapApiBook(book) {
   };
 }
 
+function flattenApiCategories(categories = []) {
+  return categories.flatMap((category) => [
+    {
+      value: String(category.id),
+      label: category.name || "Chưa phân loại",
+      count: Number(category.book_count || 0),
+    },
+    ...flattenApiCategories(category.children || []),
+  ]);
+}
+
 export default function BrowsePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const categoryParam = searchParams.get("category");
   const { addToCart } = useCart();
   const { isAuthenticated, isAuthReady } = useContext(AuthContext);
   const [search, setSearch] = useState("");
@@ -55,6 +69,7 @@ export default function BrowsePage() {
   const [currentPage, setCurrentPage] = useState(1);
   const [wishlist, setWishlist] = useState([]);
   const [books, setBooks] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState("");
   const [cartNotice, setCartNotice] = useState("");
@@ -65,15 +80,31 @@ export default function BrowsePage() {
   const itemsPerPage = 6;
 
   useEffect(() => {
+    const syncCategoryTimer = window.setTimeout(() => {
+      setSelectedCats(categoryParam ? [String(categoryParam)] : []);
+      setCurrentPage(1);
+    }, 0);
+
+    return () => window.clearTimeout(syncCategoryTimer);
+  }, [categoryParam]);
+
+  useEffect(() => {
     const loadBooksTimer = window.setTimeout(async () => {
       setIsLoading(true);
       setLoadError("");
       try {
-        const response = await axiosClient.get("/books/", {
-          params: { page_size: 100 },
-        });
-        const apiBooks = response.results || response;
+        const [bookResponse, categoryResponse] = await Promise.all([
+          axiosClient.get("/books/", {
+            params: { page_size: 100 },
+          }),
+          axiosClient.get("/categories/", {
+            params: { ordering: "name" },
+          }),
+        ]);
+        const apiBooks = bookResponse.results || bookResponse;
+        const apiCategories = categoryResponse.results || categoryResponse;
         setBooks(Array.isArray(apiBooks) ? apiBooks.map(mapApiBook) : []);
+        setCategories(Array.isArray(apiCategories) ? flattenApiCategories(apiCategories) : []);
       } catch {
         setLoadError("Không thể tải catalog sách từ API.");
       } finally {
@@ -146,8 +177,24 @@ export default function BrowsePage() {
         });
       });
     });
-    return Array.from(categoryMap.values());
-  }, [books]);
+    if (categories.length > 0) {
+      return categories
+        .map((category) => ({
+          ...category,
+          count: category.count || categoryMap.get(category.value)?.count || 0,
+        }))
+        .sort((firstCategory, secondCategory) =>
+          firstCategory.label.localeCompare(secondCategory.label, "vi", {
+            sensitivity: "base",
+          }),
+        );
+    }
+    return Array.from(categoryMap.values()).sort((firstCategory, secondCategory) =>
+      firstCategory.label.localeCompare(secondCategory.label, "vi", {
+        sensitivity: "base",
+      }),
+    );
+  }, [books, categories]);
 
   // Handlers for Filters
   const handleCatChange = (catValue) => {

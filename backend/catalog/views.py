@@ -1,4 +1,5 @@
-from django.db.models import Q
+from django.db.models import Count, Q
+from django.db.models.deletion import ProtectedError
 from rest_framework import filters, status, viewsets
 from rest_framework.parsers import FormParser, JSONParser, MultiPartParser
 from rest_framework.permissions import IsAuthenticated
@@ -8,10 +9,12 @@ from rest_framework.pagination import PageNumberPagination
 
 from accounts.authentications import JWTAuthentication
 from accounts.models import Customer
+from accounts.permissions import IsSystemAdmin
 
 from .models import Author, Book, BookReview, Category, FormatType, Publisher, Series, Wishlist
 from .permissions import IsCatalogStaff
 from .serializers import (
+    AdminCategorySerializer,
     AuthorSerializer,
     BookDetailSerializer,
     BookListSerializer,
@@ -66,9 +69,50 @@ class BookViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
-    queryset = Category.objects.prefetch_related("children").all()
+    queryset = (
+        Category.objects.prefetch_related("children")
+        .annotate(book_count=Count("book_categories", distinct=True))
+        .order_by("-book_count", "name")
+    )
     serializer_class = CategorySerializer
+    filter_backends = [filters.OrderingFilter]
+    ordering_fields = ["name", "book_count"]
+    ordering = ["-book_count", "name"]
     pagination_class = None
+
+
+class AdminCategoryViewSet(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+    permission_classes = [IsSystemAdmin]
+    serializer_class = AdminCategorySerializer
+    filter_backends = [filters.SearchFilter, filters.OrderingFilter]
+    search_fields = ["name"]
+    ordering_fields = ["name", "book_count"]
+    ordering = ["-book_count", "name"]
+    pagination_class = None
+
+    def get_queryset(self):
+        return (
+            Category.objects.select_related("parent")
+            .annotate(book_count=Count("book_categories", distinct=True))
+            .order_by("-book_count", "name")
+        )
+
+    def destroy(self, request, *args, **kwargs):
+        category = self.get_object()
+        try:
+            category.delete()
+        except ProtectedError:
+            return Response(
+                {
+                    "detail": (
+                        "Không thể xóa thể loại đang được gắn với sách. "
+                        "Hãy chuyển sách sang thể loại khác trước."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class AuthorViewSet(viewsets.ReadOnlyModelViewSet):

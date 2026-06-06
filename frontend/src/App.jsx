@@ -19,6 +19,8 @@ import StaffReviewManagement from "./pages/StaffReviewManagement";
 import StaffBookUpload from "./pages/StaffBookUpload";
 import StaffOrderManagement from "./pages/StaffOrderManagement";
 import AdminUserManagement from "./pages/AdminUserManagement";
+import AdminPromotionManagement from "./pages/AdminPromotionManagement";
+import AdminCategoryManagement from "./pages/AdminCategoryManagement";
 import DashboardPage from "./pages/DashboardPage";
 import OrdersPage from "./pages/OrdersPage";
 import SettingsPage from "./pages/SettingsPage";
@@ -211,6 +213,22 @@ const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <StaffReviewManagement />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "admin/categories",
+        element: (
+          <ProtectedRoute>
+            <AdminCategoryManagement />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: "admin/promotions",
+        element: (
+          <ProtectedRoute>
+            <AdminPromotionManagement />
           </ProtectedRoute>
         ),
       },

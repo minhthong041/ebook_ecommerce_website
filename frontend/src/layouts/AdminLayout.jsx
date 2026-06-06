@@ -13,6 +13,8 @@ const PAGE_TITLES = {
   '/staff/books': 'app.manageBooks',
   '/staff/books/upload': 'app.uploadBook',
   '/staff/reviews': 'app.manageReviews',
+  '/admin/categories': 'app.manageCategories',
+  '/admin/promotions': 'app.managePromotions',
   '/admin/users': 'app.manageUsers',
   '/profile': 'app.profile',
   '/account': 'app.profile',
@@ -36,13 +38,9 @@ const SIDEBAR_SECTIONS = [
       { to: '/staff/orders',       icon: '🧾', labelKey: 'app.manageInvoices' },
       { to: '/staff/books',        icon: '📘', labelKey: 'app.manageBooks' },
       { to: '/staff/reviews',      icon: '⭐', labelKey: 'app.manageReviews' },
-    ],
-  },
-  {
-    titleKey: 'app.system',
-    requiresAdmin: true,
-    links: [
-      { to: '/admin/users',        icon: '👥', labelKey: 'app.manageUsers' },
+      { to: '/admin/categories',   icon: '🗂️', labelKey: 'app.manageCategories', requiresAdmin: true },
+      { to: '/admin/promotions',   icon: '🏷️', labelKey: 'app.managePromotions', requiresAdmin: true },
+      { to: '/admin/users',        icon: '👥', labelKey: 'app.manageUsers', requiresAdmin: true },
     ],
   },
   {
@@ -124,7 +122,12 @@ export default function AdminLayout({ pageTitle = 'Dashboard' }) {
           }).map((section) => (
             <div key={section.titleKey}>
               <p className="admin-layout__sidebar-section-title">{t(section.titleKey)}</p>
-              {section.links.map((link) => {
+              {section.links.filter((link) => {
+                if (link.requiresAdmin) {
+                  return canManageSystem
+                }
+                return true
+              }).map((link) => {
                 if (link.action === 'logout') {
                   return (
                     <button

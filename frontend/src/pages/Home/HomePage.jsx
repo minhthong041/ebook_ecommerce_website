@@ -27,14 +27,6 @@ const FEATURES = [
   }
 ];
 
-const POPULAR_CATEGORIES = [
-  { id: 'technology', label: 'Công nghệ', icon: '💻', count: 'Xem danh mục' },
-  { id: 'business', label: 'Kinh doanh', icon: '📈', count: 'Xem danh mục' },
-  { id: 'science', label: 'Khoa học', icon: '🌌', count: 'Xem danh mục' },
-  { id: 'selfhelp', label: 'Kỹ năng sống', icon: '🌱', count: 'Xem danh mục' },
-  { id: 'literature', label: 'Văn học', icon: '📚', count: 'Xem danh mục' }
-];
-
 const formatCurrency = (value) =>
   `${new Intl.NumberFormat('vi-VN').format(Number(value || 0))}₫`;
 
@@ -61,6 +53,16 @@ const mapHeroBook = (book, index) => ({
   coverUrl: book.cover_url || '',
 });
 
+const mapPopularCategory = (category) => {
+  const bookCount = Number(category.book_count || 0);
+
+  return {
+    id: category.id,
+    label: category.name || 'Chưa phân loại',
+    bookCount,
+  };
+};
+
 const buildStats = (catalogCount) => [
   { value: String(catalogCount), label: 'Đầu sách hiện có' },
   { value: 'PDF', label: 'Đọc và tải file' },
@@ -71,6 +73,7 @@ export default function HomePage() {
   const { isAuthenticated } = useContext(AuthContext);
   const [heroBooks, setHeroBooks] = useState([]);
   const [catalogCount, setCatalogCount] = useState(0);
+  const [popularCategories, setPopularCategories] = useState([]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -90,6 +93,39 @@ export default function HomePage() {
         if (!isCancelled) {
           setCatalogCount(0);
           setHeroBooks([]);
+        }
+      });
+
+    return () => {
+      isCancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    let isCancelled = false;
+
+    axiosClient
+      .get('/categories/', { params: { ordering: '-book_count' } })
+      .then((response) => {
+        if (isCancelled) {
+          return;
+        }
+
+        const { results } = getApiResults(response);
+        const categories = results
+          .map(mapPopularCategory)
+          .filter((category) => category.bookCount > 0)
+          .sort(
+            (a, b) =>
+              b.bookCount - a.bookCount || a.label.localeCompare(b.label, 'vi'),
+          )
+          .slice(0, 5);
+
+        setPopularCategories(categories);
+      })
+      .catch(() => {
+        if (!isCancelled) {
+          setPopularCategories([]);
         }
       });
 
@@ -207,22 +243,21 @@ export default function HomePage() {
         </div>
 
         <div className="categories-grid">
-          {POPULAR_CATEGORIES.map((cat) => (
+          {popularCategories.map((cat) => (
             <Link
               key={cat.id}
               to={`/browse?category=${cat.id}`}
               className="category-card glass-card"
+              aria-label={`${cat.label}, ${cat.bookCount} sách`}
             >
-              <div className="category-card__icon-wrap">
-                <span className="category-card__icon">{cat.icon}</span>
-              </div>
-              <div className="category-card__meta">
-                <h3 className="category-card__title">{cat.label}</h3>
-                <span className="category-card__count">{cat.count}</span>
-              </div>
-              <span className="category-card__arrow">→</span>
+              <span className="category-card__title">{cat.label}</span>
             </Link>
           ))}
+          {!popularCategories.length && (
+            <div className="category-card category-card--empty glass-card">
+              <span className="category-card__title">Chưa có thể loại</span>
+            </div>
+          )}
         </div>
 
         <div className="home-categories__footer">

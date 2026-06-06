@@ -34,12 +34,24 @@ class RegisterSerializer(serializers.ModelSerializer):
         validate_password(attrs["password"])
         return attrs
 
+    def validate_email(self, value):
+        normalized = value.strip().lower()
+        if User.objects.filter(email__iexact=normalized).exists():
+            raise serializers.ValidationError("Email này đã được sử dụng.")
+        return normalized
+
+    def validate_phone_number(self, value):
+        normalized = value.strip()
+        if User.objects.filter(phone_number=normalized).exists():
+            raise serializers.ValidationError("Số điện thoại này đã được sử dụng.")
+        return normalized
+
     def create(self, validated_data):
         validated_data.pop("confirm_password", None)
         customer_role, _ = Role.objects.get_or_create(name="Customer")
         user = User(
             username=validated_data['username'],
-            email=validated_data['email'].strip().lower(),
+            email=validated_data['email'],
             full_name=validated_data['full_name'],
             role=customer_role,
         )

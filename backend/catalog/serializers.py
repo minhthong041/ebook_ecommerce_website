@@ -4,6 +4,7 @@ from pathlib import Path
 from django.core.exceptions import DisallowedHost
 from django.db import transaction
 from rest_framework import serializers
+from promotions.services import get_promotional_pricing
 
 from .ebook_preview import build_book_preview
 from .models import (
@@ -36,16 +37,40 @@ class AuthorSerializer(serializers.ModelSerializer):
 
 class CategorySerializer(serializers.ModelSerializer):
     children = serializers.SerializerMethodField()
+    book_count = serializers.SerializerMethodField()
 
     class Meta:
         model = Category
-        fields = ["id", "name", "parent", "children"]
+        fields = ["id", "name", "parent", "children", "book_count"]
 
     def get_children(self, obj):
         children = obj.children.all()
         if children:
             return CategorySerializer(children, many=True).data
         return []
+
+    def get_book_count(self, obj):
+        return getattr(obj, "book_count", obj.book_categories.count())
+
+
+class AdminCategorySerializer(serializers.ModelSerializer):
+    book_count = serializers.SerializerMethodField()
+    parent_name = serializers.CharField(source="parent.name", read_only=True)
+
+    class Meta:
+        model = Category
+        fields = ["id", "name", "parent", "parent_name", "book_count"]
+
+    def validate(self, attrs):
+        parent = attrs.get("parent", getattr(self.instance, "parent", None))
+        if self.instance and parent and parent.pk == self.instance.pk:
+            raise serializers.ValidationError(
+                {"parent": "Category cannot be its own parent."}
+            )
+        return attrs
+
+    def get_book_count(self, obj):
+        return getattr(obj, "book_count", obj.book_categories.count())
 
 
 class FormatTypeSerializer(serializers.ModelSerializer):
@@ -182,6 +207,10 @@ class StaffBookReviewUpdateSerializer(serializers.ModelSerializer):
 
 class BookListSerializer(serializers.ModelSerializer):
     publisher = PublisherSerializer(read_only=True)
+    price = serializers.SerializerMethodField()
+    original_price = serializers.SerializerMethodField()
+    promotion_discount_rate = serializers.SerializerMethodField()
+    promotion_name = serializers.SerializerMethodField()
     authors = serializers.SerializerMethodField()
     categories = serializers.SerializerMethodField()
     cover_url = serializers.SerializerMethodField()
@@ -196,6 +225,9 @@ class BookListSerializer(serializers.ModelSerializer):
             "title",
             "publisher",
             "price",
+            "original_price",
+            "promotion_discount_rate",
+            "promotion_name",
             "year_of_publication",
             "description",
             "is_active",
@@ -252,6 +284,18 @@ class BookListSerializer(serializers.ModelSerializer):
             ebook_file.format_type.name
             for ebook_file in obj.ebook_files.select_related("format_type").all()
         ]
+
+    def get_price(self, obj):
+        return str(get_promotional_pricing(obj)["price"])
+
+    def get_original_price(self, obj):
+        return str(get_promotional_pricing(obj)["original_price"])
+
+    def get_promotion_discount_rate(self, obj):
+        return str(get_promotional_pricing(obj)["promotion_discount_rate"])
+
+    def get_promotion_name(self, obj):
+        return get_promotional_pricing(obj)["promotion_name"]
 
     def get_average_rating(self, obj):
         reviews = [

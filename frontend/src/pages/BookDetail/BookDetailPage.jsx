@@ -41,6 +41,7 @@ function getAvatarGradient(username) {
 
 function mapApiBookDetail(book) {
   const price = Number(book.price || 0);
+  const originalPrice = Number(book.original_price || book.price || 0);
   const authors = book.authors || [];
   const categories = book.categories || [];
   const formats = (book.ebook_files || [])
@@ -60,7 +61,7 @@ function mapApiBookDetail(book) {
       categories.map((category) => category.name).filter(Boolean).join(", ") ||
       "Chưa phân loại",
     price,
-    originalPrice: price,
+    originalPrice,
     rating: reviewSummary.rating,
     reviewsCount: reviewSummary.reviewsCount,
     formats,
@@ -91,6 +92,7 @@ function mapApiBookDetail(book) {
 
 function mapRelatedBook(book) {
   const price = Number(book.price || 0);
+  const originalPrice = Number(book.original_price || book.price || 0);
   return {
     id: book.id,
     title: book.title,
@@ -105,7 +107,7 @@ function mapRelatedBook(book) {
         .filter(Boolean)
         .join(", ") || "Chưa phân loại",
     price,
-    originalPrice: price,
+    originalPrice,
     rating: Number(book.average_rating || 0),
     reviewsCount: Number(book.review_count || 0),
     formats: book.format_labels || [],
