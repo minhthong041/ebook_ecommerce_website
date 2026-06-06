@@ -52,10 +52,15 @@ const CheckoutPage = () => {
   const [bankInfo, setBankInfo] = useState(null);
   const [bankInfoError, setBankInfoError] = useState("");
   const [isBankInfoLoading, setIsBankInfoLoading] = useState(false);
+  const [couponCode, setCouponCode] = useState("");
+  const [couponInfo, setCouponInfo] = useState(null);
+  const [couponError, setCouponError] = useState("");
+  const [isApplyingCoupon, setIsApplyingCoupon] = useState(false);
   const cardholderRef = useRef(null);
   const cardNumberRef = useRef(null);
   const expiryRef = useRef(null);
   const cvvRef = useRef(null);
+  const couponRef = useRef(null);
 
   const [customerInfo, setCustomerInfo] = useState({
     fullName: "",
@@ -74,7 +79,8 @@ const CheckoutPage = () => {
     [cartItems],
   );
   const shipping = 0;
-  const totalAmount = subtotal + shipping;
+  const couponDiscount = Number(couponInfo?.discount_amount || 0);
+  const totalAmount = Math.max(subtotal + shipping - couponDiscount, 0);
 
   useEffect(() => {
     if (!isAuthenticated || paymentMethod !== "bank_transfer") {
@@ -142,6 +148,54 @@ const CheckoutPage = () => {
     setSubmitError("");
   };
 
+  const getCouponErrorMessage = (error) => {
+    const data = error.response?.data;
+    if (!data) {
+      return "Không thể áp dụng mã giảm giá.";
+    }
+    if (typeof data === "string") {
+      return data;
+    }
+    const couponMessage = data.coupon_code;
+    if (Array.isArray(couponMessage)) {
+      return couponMessage[0];
+    }
+    return couponMessage || data.detail || "Mã giảm giá không hợp lệ.";
+  };
+
+  const handleApplyCoupon = async () => {
+    const normalizedCode = couponCode.trim().toUpperCase();
+    setCouponError("");
+    setSubmitError("");
+    if (!normalizedCode) {
+      setCouponInfo(null);
+      setCouponError("Vui lòng nhập mã giảm giá.");
+      couponRef.current?.focus();
+      return;
+    }
+
+    setIsApplyingCoupon(true);
+    try {
+      const response = await axiosClient.post("/coupons/validate/", {
+        coupon_code: normalizedCode,
+      });
+      setCouponCode(response.code || normalizedCode);
+      setCouponInfo(response);
+    } catch (error) {
+      setCouponInfo(null);
+      setCouponError(getCouponErrorMessage(error));
+      couponRef.current?.focus();
+    } finally {
+      setIsApplyingCoupon(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponCode("");
+    setCouponInfo(null);
+    setCouponError("");
+  };
+
   const validateCardForm = () => {
     if (paymentMethod !== "card") {
       return "";
@@ -183,6 +237,9 @@ const CheckoutPage = () => {
         note: customerInfo.note,
         payment_method: paymentMethod,
       };
+      if (couponInfo?.code) {
+        payload.coupon_code = couponInfo.code;
+      }
 
       if (paymentMethod === "card") {
         const digits = cardInfo.cardNumber.replace(/\D/g, "");
@@ -198,8 +255,10 @@ const CheckoutPage = () => {
       await refreshCart();
       navigate("/order-success", { state: { order } });
     } catch (error) {
+      const couponMessage = error.response?.data?.coupon_code;
       setSubmitError(
-        error.response?.data?.detail ||
+        (Array.isArray(couponMessage) ? couponMessage[0] : couponMessage) ||
+          error.response?.data?.detail ||
           "Không thể thanh toán đơn hàng. Vui lòng thử lại.",
       );
     } finally {
@@ -475,6 +534,46 @@ const CheckoutPage = () => {
               <span>Tạm tính:</span>
               <span>{subtotal.toLocaleString("vi-VN")}₫</span>
             </div>
+            <div className="coupon-box">
+              <label htmlFor="couponCode">Mã giảm giá</label>
+              <div className="coupon-box__row">
+                <input
+                  id="couponCode"
+                  type="text"
+                  value={couponCode}
+                  onChange={(event) => {
+                    setCouponCode(event.target.value.toUpperCase());
+                    setCouponError("");
+                    setCouponInfo(null);
+                  }}
+                  placeholder="Nhập mã giảm giá"
+                  ref={couponRef}
+                />
+                <button
+                  type="button"
+                  className="coupon-box__button"
+                  onClick={handleApplyCoupon}
+                  disabled={isApplyingCoupon}
+                >
+                  {isApplyingCoupon ? "Đang áp dụng" : "Áp dụng"}
+                </button>
+              </div>
+              {couponError && <p className="coupon-box__error">{couponError}</p>}
+              {couponInfo && (
+                <p className="coupon-box__success">
+                  Đã áp dụng mã {couponInfo.code}.{" "}
+                  <button type="button" onClick={handleRemoveCoupon}>
+                    Gỡ mã
+                  </button>
+                </p>
+              )}
+            </div>
+            {couponDiscount > 0 && (
+              <div className="summary-calc-row summary-calc-row--discount">
+                <span>Giảm giá:</span>
+                <span>-{couponDiscount.toLocaleString("vi-VN")}₫</span>
+              </div>
+            )}
             <div className="summary-calc-row">
               <span>Phí giao ebook:</span>
               <span>{shipping.toLocaleString("vi-VN")}₫</span>

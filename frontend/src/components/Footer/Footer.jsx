@@ -20,10 +20,10 @@ const SUPPORT_LINKS = [
 ];
 
 const SOCIAL_LINKS = [
-  { label: "Facebook", icon: "📘", href: "https://facebook.com" },
-  { label: "Twitter", icon: "🐦", href: "https://twitter.com" },
-  { label: "Instagram", icon: "📸", href: "https://instagram.com" },
-  { label: "YouTube", icon: "▶️", href: "https://youtube.com" },
+  { label: "Facebook", brand: "facebook", href: "https://facebook.com" },
+  { label: "Instagram", brand: "instagram", href: "https://instagram.com" },
+  { label: "X", brand: "x", href: "https://x.com" },
+  { label: "YouTube", brand: "youtube", href: "https://youtube.com" },
 ];
 
 const LEGAL_LINKS = [
@@ -31,6 +31,40 @@ const LEGAL_LINKS = [
   { labelVi: "Điều khoản sử dụng", to: "/terms" },
   { label: "Cookie", to: "/cookies" },
 ];
+
+function SocialIcon({ brand }) {
+  if (brand === "facebook") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M14.12 8.02h2.02V5.13c-.35-.05-1.56-.15-2.96-.15-2.93 0-4.94 1.79-4.94 5.07v2.82H5v3.24h3.24V24h3.98v-7.89h3.12l.5-3.24h-3.62v-2.5c0-.94.25-1.58 1.9-1.58Z" />
+      </svg>
+    );
+  }
+
+  if (brand === "instagram") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <rect x="4" y="4" width="16" height="16" rx="4.5" />
+        <circle cx="12" cy="12" r="3.8" />
+        <circle cx="17.1" cy="6.9" r="1.1" />
+      </svg>
+    );
+  }
+
+  if (brand === "x") {
+    return (
+      <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+        <path d="M18.24 2.25h3.31l-7.23 8.26 8.5 11.24h-6.65l-5.21-6.82-5.96 6.82H1.69l7.73-8.84L1.25 2.25h6.83l4.71 6.23 5.45-6.23Zm-1.16 17.52h1.83L7.08 4.13H5.12l11.96 15.64Z" />
+      </svg>
+    );
+  }
+
+  return (
+    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+      <path d="M9.75 15.02V8.98L15.5 12l-5.75 3.02Z" />
+    </svg>
+  );
+}
 
 export default function Footer() {
   const { t } = usePreferences();
@@ -77,12 +111,13 @@ export default function Footer() {
               <a
                 key={social.label}
                 href={social.href}
-                className="footer__social-link"
+                className={`footer__social-link footer__social-link--${social.brand}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 aria-label={social.label}
+                title={social.label}
               >
-                {social.icon}
+                <SocialIcon brand={social.brand} />
               </a>
             ))}
           </div>

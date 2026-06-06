@@ -1,16 +1,54 @@
-# React + Vite
+# Readify Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+React + Vite frontend for the Readify ebook ecommerce website.
 
-Currently, two official plugins are available:
+## Setup
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+```powershell
+cd D:\Project\ebook_ecommerce_website\frontend
+npm install
+```
 
-## React Compiler
+Create `.env` from `.env.example`:
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+```env
+VITE_API_BASE_URL=http://127.0.0.1:8000/api
+```
 
-## Expanding the ESLint configuration
+## Run
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+```powershell
+npm run dev
+```
+
+Open:
+
+```text
+http://127.0.0.1:5173/
+```
+
+The Django backend must also be running at `http://127.0.0.1:8000/`.
+
+## Checks
+
+```powershell
+npm run lint
+npm run build
+```
+
+## Main Areas
+
+- Home and browse catalog
+- Book detail and reviews
+- Cart and checkout
+- User profile, password change, library, wishlist, orders
+- Reader page
+- Staff/admin dashboard, invoice/order management, book management, review moderation
+- Admin-only category, promotion/coupon, and user management
+
+## Frontend Notes
+
+- The browse page loads categories from the backend and sorts them alphabetically for filtering.
+- Checkout supports coupon entry and manual VietQR bank-transfer information.
+- Dark mode is supported through the shared preferences context.
+- Required form validation should show Vietnamese messages and keep focus on the missing field.

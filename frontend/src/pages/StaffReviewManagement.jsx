@@ -493,11 +493,17 @@ export default function StaffReviewManagement() {
                     sx={{
                       p: { xs: 1.75, md: 2 },
                       borderRadius: 2,
-                      borderColor:
-                        review.status === "reported" ? "#fecaca" : "#eef2f7",
+                      borderColor: (theme) =>
+                        review.status === "reported"
+                          ? theme.palette.error.light
+                          : theme.palette.divider,
                       boxShadow: "none",
-                      bgcolor:
-                        review.status === "reported" ? "#fff7f8" : "#fff",
+                      bgcolor: (theme) =>
+                        review.status === "reported"
+                          ? theme.palette.mode === "dark"
+                            ? "rgba(231, 91, 91, 0.12)"
+                            : "#fff7f8"
+                          : "background.paper",
                     }}
                   >
                     <Stack spacing={1.5}>
@@ -575,8 +581,11 @@ export default function StaffReviewManagement() {
                         sx={{
                           p: 1.5,
                           borderRadius: 2,
-                          border: "1px solid #eef2f7",
-                          bgcolor: "#fffafa",
+                          border: (theme) => `1px solid ${theme.palette.divider}`,
+                          bgcolor: (theme) =>
+                            theme.palette.mode === "dark"
+                              ? "rgba(255, 255, 255, 0.04)"
+                              : "#fffafa",
                         }}
                       >
                         <Typography sx={{ fontWeight: 900, mb: 0.5 }}>

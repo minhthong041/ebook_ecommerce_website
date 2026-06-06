@@ -32,6 +32,8 @@ const TRANSLATIONS = {
     "app.uploadBook": "Upload sách",
     "app.manageReviews": "Quản lý đánh giá",
     "app.manageInvoices": "Quản lý hóa đơn",
+    "app.manageCategories": "Quản lý thể loại",
+    "app.managePromotions": "Khuyến mãi",
     "app.manageUsers": "Quản lý người dùng",
     "app.backHome": "Về trang chủ",
     "settings.title": "Cài đặt",

@@ -1,8 +1,8 @@
 .category-filter {
   display: flex;
   flex-direction: column;
-  gap: var(--space-md);
-  padding: var(--space-md);
+  gap: 12px;
+  padding: 14px;
   background: var(--bg-surface);
   border: 1px solid rgba(231, 91, 91, 0.12);
   border-radius: var(--radius-lg);
@@ -41,15 +41,31 @@
 .category-filter__list {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.category-filter__list::-webkit-scrollbar {
+  width: 7px;
+}
+
+.category-filter__list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.category-filter__list::-webkit-scrollbar-thumb {
+  background: rgba(231, 91, 91, 0.32);
+  border-radius: 999px;
 }
 
 .category-filter__item {
   display: grid;
   grid-template-columns: auto 1fr auto;
   align-items: center;
-  gap: 0.75rem;
-  padding: 12px 14px;
+  gap: 0.65rem;
+  padding: 9px 11px;
   border-radius: var(--radius-md);
   background: var(--bg-elevated);
   color: var(--text-secondary);
@@ -70,8 +86,11 @@
 }
 
 .category-filter__label {
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .category-filter__count {

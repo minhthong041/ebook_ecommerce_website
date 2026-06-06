@@ -87,6 +87,7 @@ export default function Account() {
   });
   const fullNameRef = useRef(null);
   const emailRef = useRef(null);
+  const phoneRef = useRef(null);
   const currentPasswordRef = useRef(null);
   const newPasswordRef = useRef(null);
   const confirmPasswordRef = useRef(null);
@@ -224,6 +225,27 @@ export default function Account() {
       setAvatarFile(null);
       setProfileMessage("Đã cập nhật hồ sơ cá nhân.");
     } catch (error) {
+      const data = error.response?.data;
+      if (data && typeof data === "object" && !Array.isArray(data)) {
+        const serverFieldErrors = {};
+        ["full_name", "email", "phone_number", "dob"].forEach((field) => {
+          if (data[field]) {
+            serverFieldErrors[field] = Array.isArray(data[field])
+              ? data[field].join(", ")
+              : data[field];
+          }
+        });
+        if (Object.keys(serverFieldErrors).length > 0) {
+          setProfileFieldErrors(serverFieldErrors);
+          if (serverFieldErrors.full_name) {
+            fullNameRef.current?.focus();
+          } else if (serverFieldErrors.email) {
+            emailRef.current?.focus();
+          } else if (serverFieldErrors.phone_number) {
+            phoneRef.current?.focus();
+          }
+        }
+      }
       setProfileError(formatApiError(error, "Không thể cập nhật hồ sơ."));
     } finally {
       setIsProfileSaving(false);
@@ -367,6 +389,9 @@ export default function Account() {
                     name="phone_number"
                     value={profile.phone_number}
                     onChange={handleProfileChange}
+                    inputRef={phoneRef}
+                    error={Boolean(profileFieldErrors.phone_number)}
+                    helperText={profileFieldErrors.phone_number || " "}
                   />
                   <TextField
                     label="Ngày sinh"

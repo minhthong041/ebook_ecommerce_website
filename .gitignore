@@ -37,6 +37,7 @@ backend/media/**
 !backend/media/avatars/.gitkeep
 staticfiles/
 backend/django-dev*.log
+backend/backups/
 
 # Node / React
 node_modules/

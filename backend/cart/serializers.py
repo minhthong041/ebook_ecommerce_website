@@ -4,11 +4,16 @@ from rest_framework import serializers
 
 from catalog.models import Book
 from orders.services import get_active_pending_book_ids, get_purchased_book_ids
+from promotions.services import get_promotional_pricing
 
 from .models import ShoppingCart, ShoppingCartItem
 
 
 class CartItemBookSerializer(serializers.ModelSerializer):
+    price = serializers.SerializerMethodField()
+    original_price = serializers.SerializerMethodField()
+    promotion_discount_rate = serializers.SerializerMethodField()
+    promotion_name = serializers.SerializerMethodField()
     authors = serializers.SerializerMethodField()
     cover_url = serializers.SerializerMethodField()
     format_labels = serializers.SerializerMethodField()
@@ -19,10 +24,25 @@ class CartItemBookSerializer(serializers.ModelSerializer):
             "id",
             "title",
             "price",
+            "original_price",
+            "promotion_discount_rate",
+            "promotion_name",
             "authors",
             "cover_url",
             "format_labels",
         ]
+
+    def get_price(self, obj):
+        return str(get_promotional_pricing(obj)["price"])
+
+    def get_original_price(self, obj):
+        return str(get_promotional_pricing(obj)["original_price"])
+
+    def get_promotion_discount_rate(self, obj):
+        return str(get_promotional_pricing(obj)["promotion_discount_rate"])
+
+    def get_promotion_name(self, obj):
+        return get_promotional_pricing(obj)["promotion_name"]
 
     def get_authors(self, obj):
         return [
@@ -117,7 +137,8 @@ class CartSerializer(serializers.Serializer):
 
     def get_total_price(self, obj):
         total = sum(
-            item.book.price for item in obj.items.select_related("book").all()
+            get_promotional_pricing(item.book)["price"]
+            for item in obj.items.select_related("book").all()
         )
         return str(total)
 

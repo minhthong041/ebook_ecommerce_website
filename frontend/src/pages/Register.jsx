@@ -104,6 +104,20 @@ const Register = () => {
       .join(" | ");
   };
 
+  const getServerFieldErrors = (err) => {
+    const data = err.response?.data;
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      return {};
+    }
+    return Object.entries(data).reduce((errors, [field, messages]) => {
+      if (!Object.prototype.hasOwnProperty.call(formData, field)) {
+        return errors;
+      }
+      errors[field] = Array.isArray(messages) ? messages.join(", ") : messages;
+      return errors;
+    }, {});
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
@@ -167,6 +181,17 @@ const Register = () => {
         navigate("/login");
       }, 2000);
     } catch (err) {
+      const serverFieldErrors = getServerFieldErrors(err);
+      if (Object.keys(serverFieldErrors).length > 0) {
+        setFieldErrors(serverFieldErrors);
+        if (serverFieldErrors.username) {
+          usernameRef.current?.focus();
+        } else if (serverFieldErrors.email) {
+          emailRef.current?.focus();
+        } else if (serverFieldErrors.phone_number) {
+          phoneRef.current?.focus();
+        }
+      }
       setError(formatRegisterError(err));
     } finally {
       setIsLoading(false);

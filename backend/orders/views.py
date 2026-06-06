@@ -19,6 +19,8 @@ from accounts.permissions import IsStaffManager
 from cart.models import ShoppingCart
 from orders.models import OrderLine, ShopOrder
 from payments.models import PaymentType, Transaction, TransactionStatus
+from promotions.models import CouponUsage
+from promotions.services import calculate_cart_pricing
 
 from .serializers import (
     CheckoutSerializer,
@@ -336,6 +338,7 @@ def checkout(request):
     serializer.is_valid(raise_exception=True)
     payment_type_id = serializer.validated_data.get("payment_type_id")
     payment_method = serializer.validated_data.get("payment_method", "card")
+    coupon_code = serializer.validated_data.get("coupon_code", "").strip()
     card_payload = serializer.validated_data.get("card") or {}
 
     customer, _ = Customer.objects.get_or_create(user=request.user)
@@ -378,7 +381,8 @@ def checkout(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    total_price = sum(item.book.price for item in cart_items)
+    pricing = calculate_cart_pricing(cart_items, coupon_code=coupon_code)
+    total_price = pricing["total_price"]
 
     with db_transaction.atomic():
         order_status_pending = get_order_status(ORDER_STATUS_PENDING)
@@ -393,17 +397,26 @@ def checkout(request):
 
         shop_order = ShopOrder.objects.create(
             customer=customer,
+            coupon=pricing["coupon"],
             total_price=total_price,
-            discount_amount=0,
+            discount_amount=pricing["discount_amount"],
             order_status=order_status_pending,
             payment_type=payment_type,
         )
 
-        for cart_item in cart_items:
+        for line_item in pricing["line_items"]:
             OrderLine.objects.create(
                 order=shop_order,
-                book=cart_item.book,
-                price=cart_item.book.price,
+                book=line_item["book"],
+                price=line_item["price"],
+            )
+
+        if pricing["coupon"]:
+            CouponUsage.objects.create(
+                order=shop_order,
+                customer=customer,
+                coupon=pricing["coupon"],
+                discount_applied=pricing["coupon_discount"],
             )
 
         if payment_method == "bank_transfer":

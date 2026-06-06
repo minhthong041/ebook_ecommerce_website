@@ -153,9 +153,12 @@ function BookCover({ book }) {
         borderRadius: 1.25,
         display: "grid",
         placeItems: "center",
-        bgcolor: "#fff1f2",
+        bgcolor: (theme) =>
+          theme.palette.mode === "dark"
+            ? "rgba(231, 91, 91, 0.14)"
+            : "#fff1f2",
         color: "primary.main",
-        border: "1px solid #ffe0e3",
+        border: (theme) => `1px solid ${theme.palette.divider}`,
         flex: "0 0 auto",
       }}
     >
@@ -533,12 +536,15 @@ export default function StaffBookManagement() {
                   sx={{
                     p: { xs: 1.5, md: 1.75 },
                     borderRadius: 2,
-                    borderColor: "#eef2f7",
+                    borderColor: "divider",
                     boxShadow: "none",
                     transition: "background-color 0.18s ease, border-color 0.18s ease",
                     "&:hover": {
-                      bgcolor: "#fff7f8",
-                      borderColor: "#ffd1d6",
+                      bgcolor: (theme) =>
+                        theme.palette.mode === "dark"
+                          ? "rgba(231, 91, 91, 0.1)"
+                          : "#fff7f8",
+                      borderColor: "primary.light",
                     },
                   }}
                 >

@@ -14,6 +14,7 @@ class CheckoutSerializer(serializers.Serializer):
         default="card",
     )
     note = serializers.CharField(required=False, allow_blank=True)
+    coupon_code = serializers.CharField(required=False, allow_blank=True, max_length=50)
     card = serializers.DictField(required=False)
 
     def validate_payment_type_id(self, value):
