@@ -42,6 +42,7 @@ export default function Header() {
     itemCount,
     isLoading: isCartLoading,
     removeFromCart,
+    selectAllCartItems,
   } = useCart();
   const [scrolled, setScrolled] = useState(false);
   const [mobileDrawerOpen, setMobileDrawerOpen] = useState(false);
@@ -115,6 +116,11 @@ export default function Header() {
 
   const closeMobileDrawer = () => setMobileDrawerOpen(false);
   const closeCartDrawer = () => setCartDrawerOpen(false);
+  const handleCartDrawerCheckout = () => {
+    selectAllCartItems();
+    closeCartDrawer();
+    navigate("/checkout");
+  };
 
   return (
     <>
@@ -286,6 +292,7 @@ export default function Header() {
         isLoading={isCartLoading}
         onClose={closeCartDrawer}
         onRemove={handleRemove}
+        onCheckout={handleCartDrawerCheckout}
       />
 
       {/* Mobile Drawer */}

@@ -38,7 +38,7 @@ const SIDEBAR_SECTIONS = [
       { to: '/staff/orders',       icon: '🧾', labelKey: 'app.manageInvoices' },
       { to: '/staff/books',        icon: '📘', labelKey: 'app.manageBooks' },
       { to: '/staff/reviews',      icon: '⭐', labelKey: 'app.manageReviews' },
-      { to: '/admin/categories',   icon: '🗂️', labelKey: 'app.manageCategories', requiresAdmin: true },
+      { to: '/admin/categories',   icon: '🗂️', labelKey: 'app.manageCategories' },
       { to: '/admin/promotions',   icon: '🏷️', labelKey: 'app.managePromotions', requiresAdmin: true },
       { to: '/admin/users',        icon: '👥', labelKey: 'app.manageUsers', requiresAdmin: true },
     ],
@@ -66,6 +66,11 @@ function getAvatarUrl(user) {
   return user.avatar_url.url || ''
 }
 
+function normalizeRole(role) {
+  const rawRole = typeof role === 'object' ? role?.name : role
+  return String(rawRole || '').trim().toLowerCase()
+}
+
 /**
  * AdminLayout – layout sidebar cho dashboard / trang tài khoản.
  * Cấu trúc: Sidebar (fixed) + Topbar + main content (Outlet)
@@ -78,12 +83,14 @@ export default function AdminLayout({ pageTitle = 'Dashboard' }) {
   const currentPageTitle = PAGE_TITLES[location.pathname] ? t(PAGE_TITLES[location.pathname]) : pageTitle
   const displayName = user?.full_name || user?.username || 'Người dùng'
   const avatarUrl = getAvatarUrl(user)
-  const roleLabel = user?.role || (user?.is_superuser ? 'Admin' : user?.is_staff ? 'Nhân viên' : 'Thành viên')
-  const normalizedRole = (user?.role || '').trim().toLowerCase()
+  const rawRoleLabel = typeof user?.role === 'object' ? user.role?.name : user?.role
+  const roleLabel = rawRoleLabel || (user?.is_superuser ? 'Admin' : user?.is_staff ? 'Nhân viên' : 'Thành viên')
+  const normalizedRole = normalizeRole(user?.role)
   const canManageCatalog = Boolean(
     user?.is_superuser ||
       user?.is_staff ||
       normalizedRole === 'admin' ||
+      normalizedRole === 'staff' ||
       normalizedRole === 'employee',
   )
   const canManageSystem = Boolean(user?.is_superuser || normalizedRole === 'admin')

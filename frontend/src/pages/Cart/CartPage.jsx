@@ -1,12 +1,41 @@
-import { useContext, useMemo } from "react";
+import { useContext, useEffect, useMemo, useRef } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { AuthContext } from "../../context/AuthContext";
 import { useCart } from "../../context/CartContext";
 import "./CartPage.css";
 
-function CartRow({ item, onRemove }) {
+function SelectAllCheckbox({ checked, indeterminate, onChange }) {
+  const checkboxRef = useRef(null);
+
+  useEffect(() => {
+    if (checkboxRef.current) {
+      checkboxRef.current.indeterminate = indeterminate;
+    }
+  }, [indeterminate]);
+
   return (
-    <div className="cart-row">
+    <input
+      ref={checkboxRef}
+      type="checkbox"
+      className="cart-select__input"
+      checked={checked}
+      onChange={onChange}
+      aria-label="Chọn tất cả sách trong giỏ"
+    />
+  );
+}
+
+function CartRow({ item, isSelected, onToggleSelection, onRemove }) {
+  return (
+    <div className={`cart-row${isSelected ? " cart-row--selected" : ""}`}>
+      <label className="cart-row__select">
+        <input
+          type="checkbox"
+          checked={isSelected}
+          onChange={() => onToggleSelection(item.id)}
+          aria-label={`Chọn ${item.title} để thanh toán`}
+        />
+      </label>
       <div className="cart-row__book">
         <div className="cart-row__cover" aria-hidden="true">
           {item.coverUrl ? (
@@ -45,15 +74,22 @@ export default function CartPage() {
   const { isAuthenticated } = useContext(AuthContext);
   const {
     items: cartItems,
+    selectedCartItems,
     isLoading,
     error,
     removeFromCart,
+    toggleCartItemSelection,
+    selectAllCartItems,
+    clearCartItemSelection,
   } = useCart();
   const navigate = useNavigate();
 
+  const selectedCount = selectedCartItems.length;
+  const allSelected = cartItems.length > 0 && selectedCount === cartItems.length;
+  const someSelected = selectedCount > 0 && !allSelected;
   const subtotal = useMemo(
-    () => cartItems.reduce((sum, item) => sum + item.price, 0),
-    [cartItems],
+    () => selectedCartItems.reduce((sum, item) => sum + item.price, 0),
+    [selectedCartItems],
   );
 
   const shipping = 0;
@@ -63,16 +99,24 @@ export default function CartPage() {
     await removeFromCart(itemId);
   };
 
+  const handleToggleAll = () => {
+    if (allSelected || someSelected) {
+      clearCartItemSelection();
+      return;
+    }
+    selectAllCartItems();
+  };
+
   return (
     <main className="cart-page">
       <section className="cart-hero" aria-labelledby="cart-title">
         <div className="cart-hero__content">
           <span className="cart-hero__eyebrow">🛒 Giỏ hàng của bạn</span>
           <h1 className="cart-hero__title" id="cart-title">
-            Kiểm tra đơn hàng và thanh toán nhanh chóng
+            Chọn sách và thanh toán nhanh chóng
           </h1>
           <p className="cart-hero__description">
-            Chỉnh sửa số lượng, kiểm tra tổng chi phí và tiếp tục mua sắm ngay.
+            Tích chọn những cuốn muốn thanh toán ngay, các cuốn còn lại vẫn nằm trong giỏ.
           </p>
         </div>
       </section>
@@ -126,6 +170,13 @@ export default function CartPage() {
         <div className="cart-layout container">
           <section className="cart-list">
             <div className="cart-list__header">
+              <span className="cart-list__select-all">
+                <SelectAllCheckbox
+                  checked={allSelected}
+                  indeterminate={someSelected}
+                  onChange={handleToggleAll}
+                />
+              </span>
               <span>Sản phẩm</span>
               <span>Đơn giá</span>
               <span>Số lượng</span>
@@ -138,6 +189,8 @@ export default function CartPage() {
                 <CartRow
                   key={item.id}
                   item={item}
+                  isSelected={selectedCartItems.some((selectedItem) => selectedItem.id === item.id)}
+                  onToggleSelection={toggleCartItemSelection}
                   onRemove={handleRemove}
                 />
               ))}
@@ -147,6 +200,9 @@ export default function CartPage() {
           <aside className="cart-summary">
             <div className="cart-summary__box glass-card">
               <h2>Tóm tắt đơn hàng</h2>
+              <p className="cart-summary__selected">
+                Đã chọn {selectedCount}/{cartItems.length} sách
+              </p>
               <div className="cart-summary__divider" />
               <div className="cart-summary__row">
                 <span>Tạm tính</span>
@@ -165,8 +221,9 @@ export default function CartPage() {
                 type="button"
                 className="btn btn-primary cart-summary__checkout"
                 onClick={() => navigate("/checkout")}
+                disabled={selectedCount === 0}
               >
-                Tiến hành thanh toán
+                {selectedCount === 0 ? "Chọn sách để thanh toán" : "Tiến hành thanh toán"}
               </button>
               <Link to="/browse" className="cart-summary__continue">
                 ← Tiếp tục mua sắm

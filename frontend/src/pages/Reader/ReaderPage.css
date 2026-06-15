@@ -72,6 +72,15 @@
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
+.reader-container h1,
+.reader-container h2,
+.reader-container h3,
+.reader-container h4,
+.reader-container h5,
+.reader-container h6 {
+  color: var(--reader-text);
+}
+
 /* Custom Scrollbar for Reader components */
 .reader-container *::-webkit-scrollbar {
   width: 8px;
@@ -132,6 +141,7 @@
 .reader-header__book-title {
   font-size: 0.95rem;
   font-weight: 700;
+  color: var(--reader-text);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -670,6 +680,7 @@
   line-height: 1.25;
   margin: 0 0 16px;
   font-family: inherit;
+  color: var(--reader-text);
 }
 
 .reader-source-note {
@@ -731,6 +742,11 @@
   display: inline-block;
   vertical-align: super;
   margin-left: 2px;
+  user-select: none;
+}
+
+.reader-note-indicator::after {
+  content: "💬";
 }
 
 /* Selection Tooltip Popup */

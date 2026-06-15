@@ -15,6 +15,11 @@ class CheckoutSerializer(serializers.Serializer):
     )
     note = serializers.CharField(required=False, allow_blank=True)
     coupon_code = serializers.CharField(required=False, allow_blank=True, max_length=50)
+    cart_item_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        allow_empty=True,
+    )
     card = serializers.DictField(required=False)
 
     def validate_payment_type_id(self, value):

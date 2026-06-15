@@ -238,9 +238,16 @@
 
 .checkout-summary-section h3 {
   font-size: 1.25rem;
-  margin-bottom: 20px;
+  margin-bottom: 6px;
   padding-bottom: 10px;
   border-bottom: 1px solid var(--border);
+}
+
+.checkout-selected-note {
+  margin: 0 0 16px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  font-weight: 700;
 }
 
 .summary-items {

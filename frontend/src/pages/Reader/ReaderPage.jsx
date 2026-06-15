@@ -1,6 +1,7 @@
-import { useState, useEffect, useMemo, useRef } from "react";
+import { useState, useEffect, useMemo, useRef, useContext } from "react";
 import { useParams, Link } from "react-router-dom";
 import axiosClient from "../../api/axiosClient";
+import { AuthContext } from "../../context/AuthContext";
 import "./ReaderPage.css";
 
 const THEMES = [
@@ -54,13 +55,29 @@ const getStoredJson = (key, fallbackValue) => {
   }
 };
 
-const getStoredChapterIndex = (bookId) => {
-  const progress = getStoredJson(`reader_progress_${bookId}`, {});
+const getReaderStorageScope = (user) => {
+  if (user?.id) {
+    return `user_${user.id}`;
+  }
+
+  const savedUser = getStoredJson("user_info", null);
+  if (savedUser?.id) {
+    return `user_${savedUser.id}`;
+  }
+
+  return "anonymous";
+};
+
+const getReaderStorageKey = (type, bookId, storageScope) =>
+  `reader_${type}_${storageScope}_${bookId}`;
+
+const getStoredChapterIndex = (storageKey) => {
+  const progress = getStoredJson(storageKey, {});
   return progress.chapterIndex ?? 0;
 };
 
-const getStoredHighestProgress = (bookId) => {
-  const progress = getStoredJson(`reader_progress_${bookId}`, {});
+const getStoredHighestProgress = (storageKey) => {
+  const progress = getStoredJson(storageKey, {});
   return Number(progress.highestProgress || 0);
 };
 
@@ -133,7 +150,21 @@ const mapLibraryBook = (payload) => {
 
 export default function ReaderPage() {
   const { id } = useParams();
+  const { user } = useContext(AuthContext);
   const bookId = Number(id);
+  const readerStorageScope = useMemo(() => getReaderStorageScope(user), [user]);
+  const progressStorageKey = useMemo(
+    () => getReaderStorageKey("progress", bookId, readerStorageScope),
+    [bookId, readerStorageScope],
+  );
+  const annotationsStorageKey = useMemo(
+    () => getReaderStorageKey("annotations", bookId, readerStorageScope),
+    [bookId, readerStorageScope],
+  );
+  const bookmarksStorageKey = useMemo(
+    () => getReaderStorageKey("bookmarks", bookId, readerStorageScope),
+    [bookId, readerStorageScope],
+  );
 
   const [book, setBook] = useState(null);
   const [isLoadingBook, setIsLoadingBook] = useState(true);
@@ -141,7 +172,7 @@ export default function ReaderPage() {
 
   // 2. States
   const [activeChapterIndex, setActiveChapterIndex] = useState(() =>
-    getStoredChapterIndex(bookId),
+    getStoredChapterIndex(progressStorageKey),
   );
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState("toc"); // toc, settings, annotations
@@ -157,11 +188,11 @@ export default function ReaderPage() {
 
   // Annotations (highlights & notes) & Bookmarks loaded from localStorage
   const [annotations, setAnnotations] = useState(() =>
-    getStoredJson(`reader_annotations_${bookId}`, []),
+    getStoredJson(annotationsStorageKey, []),
   );
 
   const [bookmarks, setBookmarks] = useState(() =>
-    getStoredJson(`reader_bookmarks_${bookId}`, []),
+    getStoredJson(bookmarksStorageKey, []),
   );
 
   // Dynamic selection tooltip state
@@ -176,12 +207,15 @@ export default function ReaderPage() {
   const [viewingAnnotation, setViewingAnnotation] = useState(null);
 
   const contentRef = useRef(null);
+  const mainPaneRef = useRef(null);
   const progressSaveTimerRef = useRef(null);
-  const highestProgressRef = useRef(getStoredHighestProgress(bookId));
+  const skipAnnotationsPersistRef = useRef(true);
+  const skipBookmarksPersistRef = useRef(true);
+  const highestProgressRef = useRef(getStoredHighestProgress(progressStorageKey));
 
   // CODE THÊM VÀO: State và logic cho Reading Progress
   const [highestProgress, setHighestProgress] = useState(() =>
-    getStoredHighestProgress(bookId),
+    getStoredHighestProgress(progressStorageKey),
   );
 
   const getChapterPersistenceId = (chapter) => {
@@ -208,7 +242,7 @@ export default function ReaderPage() {
 
   const persistLocalProgress = (chapterIndex, nextHighestProgress) => {
     localStorage.setItem(
-      `reader_progress_${bookId}`,
+      progressStorageKey,
       JSON.stringify({
         chapterIndex,
         highestProgress: clampProgress(nextHighestProgress),
@@ -284,16 +318,19 @@ export default function ReaderPage() {
 
   // 3. Effects
   useEffect(() => {
+    skipAnnotationsPersistRef.current = true;
+    skipBookmarksPersistRef.current = true;
+
     const resetTimer = window.setTimeout(() => {
-      setActiveChapterIndex(getStoredChapterIndex(bookId));
-      setAnnotations(getStoredJson(`reader_annotations_${bookId}`, []));
-      setBookmarks(getStoredJson(`reader_bookmarks_${bookId}`, []));
-      highestProgressRef.current = getStoredHighestProgress(bookId);
+      setActiveChapterIndex(getStoredChapterIndex(progressStorageKey));
+      setAnnotations(getStoredJson(annotationsStorageKey, []));
+      setBookmarks(getStoredJson(bookmarksStorageKey, []));
+      highestProgressRef.current = getStoredHighestProgress(progressStorageKey);
       setHighestProgress(highestProgressRef.current);
     }, 0);
 
     return () => window.clearTimeout(resetTimer);
-  }, [bookId]);
+  }, [annotationsStorageKey, bookmarksStorageKey, progressStorageKey]);
 
   useEffect(() => {
     let isCancelled = false;
@@ -318,16 +355,16 @@ export default function ReaderPage() {
 
           const nextBook = mapLibraryBook(payload);
           const nextHighestProgress = Math.max(
-            getStoredHighestProgress(bookId),
+            getStoredHighestProgress(progressStorageKey),
             nextBook.savedProgress,
           );
           highestProgressRef.current = nextHighestProgress;
           setBook(nextBook);
           setHighestProgress(nextHighestProgress);
           localStorage.setItem(
-            `reader_progress_${bookId}`,
+            progressStorageKey,
             JSON.stringify({
-              chapterIndex: getStoredChapterIndex(bookId),
+              chapterIndex: getStoredChapterIndex(progressStorageKey),
               highestProgress: clampProgress(nextHighestProgress),
               updatedAt: new Date().toISOString(),
             }),
@@ -358,25 +395,35 @@ export default function ReaderPage() {
       isCancelled = true;
       window.clearTimeout(loadTimer);
     };
-  }, [bookId]);
+  }, [bookId, progressStorageKey]);
 
   useEffect(() => {
     localStorage.setItem("reader_preferences", JSON.stringify(preferences));
   }, [preferences]);
 
   useEffect(() => {
+    if (skipAnnotationsPersistRef.current) {
+      skipAnnotationsPersistRef.current = false;
+      return;
+    }
+
     localStorage.setItem(
-      `reader_annotations_${bookId}`,
+      annotationsStorageKey,
       JSON.stringify(annotations),
     );
-  }, [annotations, bookId]);
+  }, [annotations, annotationsStorageKey]);
 
   useEffect(() => {
+    if (skipBookmarksPersistRef.current) {
+      skipBookmarksPersistRef.current = false;
+      return;
+    }
+
     localStorage.setItem(
-      `reader_bookmarks_${bookId}`,
+      bookmarksStorageKey,
       JSON.stringify(bookmarks),
     );
-  }, [bookmarks, bookId]);
+  }, [bookmarks, bookmarksStorageKey]);
 
   useEffect(() => {
     return () => {
@@ -466,50 +513,109 @@ export default function ReaderPage() {
   }
 
   // 5. Handling Text Selection
+  const getParagraphNode = (node) => {
+    let currentNode =
+      node?.nodeType === 1 ? node : node?.parentElement || node?.parentNode;
+
+    while (currentNode && currentNode !== contentRef.current) {
+      if (
+        currentNode.nodeName === "P" &&
+        currentNode.hasAttribute("data-index")
+      ) {
+        return currentNode;
+      }
+      currentNode = currentNode.parentElement || currentNode.parentNode;
+    }
+
+    return null;
+  };
+
+  const getSelectionOffsets = (range, paragraphNode, rawSelectedText) => {
+    const prefixRange = document.createRange();
+    prefixRange.selectNodeContents(paragraphNode);
+    prefixRange.setEnd(range.startContainer, range.startOffset);
+
+    const leadingWhitespace = rawSelectedText.match(/^\s*/)?.[0].length || 0;
+    const trailingWhitespace = rawSelectedText.match(/\s*$/)?.[0].length || 0;
+    const baseOffset = prefixRange.toString().length;
+
+    return {
+      startOffset: baseOffset + leadingWhitespace,
+      endOffset: baseOffset + rawSelectedText.length - trailingWhitespace,
+    };
+  };
+
   const handleTextSelection = () => {
     const selection = window.getSelection();
-    const selectedText = selection.toString().trim();
+    if (!selection || selection.rangeCount === 0) {
+      if (!showNoteForm) {
+        setShowTooltip(false);
+      }
+      return;
+    }
+
+    const rawSelectedText = selection.toString();
+    const selectedText = rawSelectedText.trim();
 
     if (selectedText.length > 0) {
       try {
         const range = selection.getRangeAt(0);
+        const contentElement = contentRef.current;
+        const mainPaneElement = mainPaneRef.current;
 
         // Ensure the selection is within our reading content pane
-        let node = range.startContainer;
-        let isWithinContent = false;
-        while (node) {
-          if (node === contentRef.current) {
-            isWithinContent = true;
-            break;
+        if (
+          !contentElement ||
+          !contentElement.contains(range.startContainer) ||
+          !contentElement.contains(range.endContainer)
+        ) {
+          if (!showNoteForm) {
+            setShowTooltip(false);
           }
-          node = node.parentNode;
+          return;
         }
 
-        if (!isWithinContent) return;
+        const startParagraph = getParagraphNode(range.startContainer);
+        const endParagraph = getParagraphNode(range.endContainer);
 
-        // Find the closest paragraph element to retrieve paragraphIndex
-        let pNode = range.startContainer;
-        while (pNode && pNode.nodeName !== "P") {
-          pNode = pNode.parentNode;
+        if (!startParagraph || startParagraph !== endParagraph) {
+          if (!showNoteForm) {
+            setShowTooltip(false);
+          }
+          return;
         }
 
-        if (pNode && pNode.hasAttribute("data-index")) {
-          const paragraphIndex = parseInt(pNode.getAttribute("data-index"), 10);
-          const rect = range.getBoundingClientRect();
-          const contentRect = contentRef.current.getBoundingClientRect();
+        const paragraphIndex = parseInt(
+          startParagraph.getAttribute("data-index"),
+          10,
+        );
+        const { startOffset, endOffset } = getSelectionOffsets(
+          range,
+          startParagraph,
+          rawSelectedText,
+        );
+        const rangeRects = Array.from(range.getClientRects()).filter(
+          (rect) => rect.width > 0 || rect.height > 0,
+        );
+        const rect = rangeRects[rangeRects.length - 1] || range.getBoundingClientRect();
+        const paneRect =
+          mainPaneElement?.getBoundingClientRect() ||
+          contentElement.getBoundingClientRect();
 
-          // Position relative to the main container
-          setSelectionData({
-            text: selectedText,
-            paragraphIndex: paragraphIndex,
-            coords: {
-              top:
-                rect.top - contentRect.top + contentRef.current.scrollTop - 48,
-              left: rect.left - contentRect.left + rect.width / 2,
-            },
-          });
-          setShowTooltip(true);
-        }
+        setSelectionData({
+          text: selectedText,
+          paragraphIndex,
+          startOffset,
+          endOffset,
+          coords: {
+            top: Math.max(56, rect.top - paneRect.top - 8),
+            left: Math.min(
+              Math.max(rect.left - paneRect.left + rect.width / 2, 32),
+              paneRect.width - 32,
+            ),
+          },
+        });
+        setShowTooltip(true);
       } catch (err) {
         console.error("Lỗi khi lấy vùng chọn text:", err);
       }
@@ -528,6 +634,8 @@ export default function ReaderPage() {
       chapterIndex: activeChapterIndex,
       chapterTitle: activeChapter.title,
       paragraphIndex: selectionData.paragraphIndex,
+      startOffset: selectionData.startOffset,
+      endOffset: selectionData.endOffset,
       selectedText: selectionData.text,
       color: color,
       note: "",
@@ -547,6 +655,8 @@ export default function ReaderPage() {
       chapterIndex: activeChapterIndex,
       chapterTitle: activeChapter.title,
       paragraphIndex: selectionData.paragraphIndex,
+      startOffset: selectionData.startOffset,
+      endOffset: selectionData.endOffset,
       selectedText: selectionData.text,
       color: selectedHighlightColor,
       note: noteText.trim(),
@@ -560,7 +670,7 @@ export default function ReaderPage() {
   };
 
   const clearSelection = () => {
-    window.getSelection().removeAllRanges();
+    window.getSelection()?.removeAllRanges();
     setSelectionData(null);
     setShowTooltip(false);
     setShowNoteForm(false);
@@ -593,6 +703,36 @@ export default function ReaderPage() {
   };
 
   // 7. Render Paragraphs with Inline Highlights
+  const getAnnotationTextRange = (text, annotation) => {
+    const startOffset = Number(annotation.startOffset);
+    const endOffset = Number(annotation.endOffset);
+
+    if (
+      Number.isInteger(startOffset) &&
+      Number.isInteger(endOffset) &&
+      startOffset >= 0 &&
+      endOffset > startOffset &&
+      endOffset <= text.length
+    ) {
+      return {
+        ...annotation,
+        startIndex: startOffset,
+        endIndex: endOffset,
+      };
+    }
+
+    const fallbackIndex = text.indexOf(annotation.selectedText);
+    if (fallbackIndex === -1) {
+      return null;
+    }
+
+    return {
+      ...annotation,
+      startIndex: fallbackIndex,
+      endIndex: fallbackIndex + annotation.selectedText.length,
+    };
+  };
+
   const renderParagraph = (text, paragraphIndex) => {
     const paragraphAnnotations = annotations.filter(
       (ann) =>
@@ -612,17 +752,12 @@ export default function ReaderPage() {
       );
     }
 
-    // Find all matches in paragraph text and sort them
     let segments = [];
     let currentIndex = 0;
 
-    // Find occurrences for each highlight in the text
     const matches = paragraphAnnotations
-      .map((ann) => {
-        const index = text.indexOf(ann.selectedText);
-        return { ...ann, startIndex: index };
-      })
-      .filter((m) => m.startIndex !== -1)
+      .map((ann) => getAnnotationTextRange(text, ann))
+      .filter(Boolean)
       .sort((a, b) => a.startIndex - b.startIndex);
 
     // Filter overlapping annotations just in case
@@ -631,7 +766,7 @@ export default function ReaderPage() {
     for (const match of matches) {
       if (match.startIndex >= lastEnd) {
         nonOverlappingMatches.push(match);
-        lastEnd = match.startIndex + match.selectedText.length;
+        lastEnd = match.endIndex;
       }
     }
 
@@ -646,11 +781,11 @@ export default function ReaderPage() {
           className={`reader-highlight-span reader-highlight-span--${match.color}`}
           onClick={() => setViewingAnnotation(match)}
         >
-          {match.selectedText}
-          {match.note && <span className="reader-note-indicator">💬</span>}
+          {text.slice(match.startIndex, match.endIndex)}
+          {match.note && <span className="reader-note-indicator" aria-hidden="true" />}
         </span>,
       );
-      currentIndex = match.startIndex + match.selectedText.length;
+      currentIndex = match.endIndex;
     }
 
     if (currentIndex < text.length) {
@@ -729,12 +864,12 @@ export default function ReaderPage() {
       </header>
 
       
-      <div style={{ width: "100%", height: "4px", backgroundColor: "#e0e0e0", zIndex: 10 }}>
+      <div style={{ width: "100%", height: "4px", backgroundColor: "var(--reader-bg-hover)", zIndex: 10 }}>
         <div
           style={{
             width: `${highestProgress}%`,
             height: "100%",
-            backgroundColor: "var(--accent)",
+            backgroundColor: "var(--reader-accent)",
             transition: "width 0.1s ease-out",
           }}
         />
@@ -951,6 +1086,7 @@ export default function ReaderPage() {
 
         {/* MAIN READING PANE */}
         <main
+          ref={mainPaneRef}
           className="reader-main-pane"
           onMouseUp={handleTextSelection}
           onKeyUp={handleTextSelection}

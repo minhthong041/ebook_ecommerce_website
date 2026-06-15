@@ -770,6 +770,7 @@
   z-index: 10;
   width: min(650px, 90vw);
   background: var(--bg-surface);
+  color: var(--text-primary);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
   box-shadow: 0 24px 60px rgba(0, 0, 0, 0.12);
@@ -829,12 +830,13 @@
   font-family: var(--font-body);
   font-size: 1.05rem;
   line-height: 1.85;
-  color: #1e293b;
+  color: var(--text-primary);
 }
 
 .preview-modal__sample-p {
   margin-bottom: var(--space-md);
   text-indent: 24px;
+  color: var(--text-primary);
 }
 
 .preview-modal__source {

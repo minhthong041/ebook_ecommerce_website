@@ -45,7 +45,13 @@ function buildDemoCardToken() {
 const CheckoutPage = () => {
   const navigate = useNavigate();
   const { isAuthenticated } = useContext(AuthContext);
-  const { items: cartItems, isLoading, refreshCart } = useCart();
+  const {
+    items: cartItems,
+    selectedCartItemIds,
+    selectedCartItems,
+    isLoading,
+    refreshCart,
+  } = useCart();
   const [submitError, setSubmitError] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState("card");
@@ -75,8 +81,8 @@ const CheckoutPage = () => {
   });
 
   const subtotal = useMemo(
-    () => cartItems.reduce((total, item) => total + item.price, 0),
-    [cartItems],
+    () => selectedCartItems.reduce((total, item) => total + item.price, 0),
+    [selectedCartItems],
   );
   const shipping = 0;
   const couponDiscount = Number(couponInfo?.discount_amount || 0);
@@ -160,7 +166,16 @@ const CheckoutPage = () => {
     if (Array.isArray(couponMessage)) {
       return couponMessage[0];
     }
-    return couponMessage || data.detail || "Mã giảm giá không hợp lệ.";
+    const cartItemMessage = data.cart_item_ids;
+    if (Array.isArray(cartItemMessage)) {
+      return cartItemMessage[0];
+    }
+    return (
+      couponMessage ||
+      cartItemMessage ||
+      data.detail ||
+      "Mã giảm giá không hợp lệ."
+    );
   };
 
   const handleApplyCoupon = async () => {
@@ -173,11 +188,17 @@ const CheckoutPage = () => {
       couponRef.current?.focus();
       return;
     }
+    if (selectedCartItems.length === 0) {
+      setCouponInfo(null);
+      setCouponError("Vui lòng chọn ít nhất một sách để áp dụng mã.");
+      return;
+    }
 
     setIsApplyingCoupon(true);
     try {
       const response = await axiosClient.post("/coupons/validate/", {
         coupon_code: normalizedCode,
+        cart_item_ids: selectedCartItemIds,
       });
       setCouponCode(response.code || normalizedCode);
       setCouponInfo(response);
@@ -225,6 +246,11 @@ const CheckoutPage = () => {
   const handlePlaceOrder = async (e) => {
     e.preventDefault();
     setSubmitError("");
+    if (selectedCartItems.length === 0) {
+      setSubmitError("Vui lòng chọn ít nhất một sách để thanh toán.");
+      return;
+    }
+
     const validationError = validateCardForm();
     if (validationError) {
       setSubmitError(validationError);
@@ -236,6 +262,7 @@ const CheckoutPage = () => {
       const payload = {
         note: customerInfo.note,
         payment_method: paymentMethod,
+        cart_item_ids: selectedCartItemIds,
       };
       if (couponInfo?.code) {
         payload.coupon_code = couponInfo.code;
@@ -302,6 +329,21 @@ const CheckoutPage = () => {
           <p>Thêm ebook vào giỏ hàng trước khi thanh toán.</p>
           <Link to="/browse" className="btn btn-primary">
             Mua sách
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (selectedCartItems.length === 0) {
+    return (
+      <div className="checkout-page">
+        <h2 className="checkout-title">Thanh toán</h2>
+        <div className="checkout-empty">
+          <h3>Chưa chọn sách để thanh toán</h3>
+          <p>Quay lại giỏ hàng và tích chọn ít nhất một cuốn sách.</p>
+          <Link to="/cart" className="btn btn-primary">
+            Chọn sách trong giỏ
           </Link>
         </div>
       </div>
@@ -516,8 +558,11 @@ const CheckoutPage = () => {
         {/* Tóm tắt đơn hàng */}
         <div className="checkout-summary-section">
           <h3>Đơn hàng của bạn</h3>
+          <p className="checkout-selected-note">
+            Đang thanh toán {selectedCartItems.length}/{cartItems.length} sách trong giỏ.
+          </p>
           <ul className="summary-items">
-            {cartItems.map((item) => (
+            {selectedCartItems.map((item) => (
               <li key={item.id} className="summary-item">
                 <span>
                   {item.title} <span className="item-qty">x1</span>

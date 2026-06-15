@@ -34,9 +34,16 @@ const emptyForm = {
   parent: "",
 };
 
-function isAdmin(user) {
-  const role = (user?.role || "").trim().toLowerCase();
-  return Boolean(user?.is_superuser || role === "admin");
+function canManageCatalog(user) {
+  const rawRole = typeof user?.role === "object" ? user.role?.name : user?.role;
+  const role = String(rawRole || "").trim().toLowerCase();
+  return Boolean(
+    user?.is_superuser ||
+      user?.is_staff ||
+      role === "admin" ||
+      role === "staff" ||
+      role === "employee",
+  );
 }
 
 function getApiError(error, fallback) {
@@ -67,7 +74,7 @@ function buildForm(category) {
 
 export default function AdminCategoryManagement() {
   const { user } = useContext(AuthContext);
-  const hasAccess = isAdmin(user);
+  const hasAccess = canManageCatalog(user);
   const [categories, setCategories] = useState([]);
   const [query, setQuery] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -189,7 +196,7 @@ export default function AdminCategoryManagement() {
     return (
       <Container maxWidth="md" sx={{ py: 4 }}>
         <Alert severity="warning">
-          Chỉ tài khoản Admin mới có quyền quản lý thể loại.
+          Chỉ tài khoản Admin hoặc Employee mới có quyền quản lý thể loại.
         </Alert>
       </Container>
     );

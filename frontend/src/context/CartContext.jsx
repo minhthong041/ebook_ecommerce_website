@@ -5,6 +5,7 @@ import {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import axiosClient from "../api/axiosClient";
@@ -65,8 +66,10 @@ function buildApiError(error, fallback) {
 export function CartProvider({ children }) {
   const { isAuthenticated, isAuthReady } = useContext(AuthContext);
   const [items, setItems] = useState([]);
+  const [selectedCartItemIds, setSelectedCartItemIds] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState("");
+  const knownCartItemIdsRef = useRef([]);
 
   const refreshCart = useCallback(async () => {
     if (!isAuthReady) {
@@ -75,6 +78,8 @@ export function CartProvider({ children }) {
 
     if (!isAuthenticated) {
       setItems([]);
+      setSelectedCartItemIds([]);
+      knownCartItemIdsRef.current = [];
       setError("");
       setIsLoading(false);
       return;
@@ -84,9 +89,23 @@ export function CartProvider({ children }) {
     setError("");
     try {
       const response = await axiosClient.get("/cart/");
-      setItems((response.items || []).map(mapCartItem));
+      const nextItems = (response.items || []).map(mapCartItem);
+      const nextItemIds = nextItems.map((item) => item.id);
+      const previousItemIds = new Set(knownCartItemIdsRef.current);
+
+      setItems(nextItems);
+      setSelectedCartItemIds((currentIds) => {
+        const currentSelectedIds = new Set(currentIds.map(Number));
+        const nextSelectedIds = nextItemIds.filter(
+          (itemId) => currentSelectedIds.has(itemId) || !previousItemIds.has(itemId),
+        );
+        knownCartItemIdsRef.current = nextItemIds;
+        return nextSelectedIds;
+      });
     } catch (err) {
       setItems([]);
+      setSelectedCartItemIds([]);
+      knownCartItemIdsRef.current = [];
       setError(buildApiError(err, "Không thể tải giỏ hàng."));
     } finally {
       setIsLoading(false);
@@ -135,12 +154,39 @@ export function CartProvider({ children }) {
 
   const clearLocalCart = useCallback(() => {
     setItems([]);
+    setSelectedCartItemIds([]);
+    knownCartItemIdsRef.current = [];
     setError("");
+  }, []);
+
+  const toggleCartItemSelection = useCallback((cartItemId) => {
+    const normalizedId = Number(cartItemId);
+    setSelectedCartItemIds((currentIds) =>
+      currentIds.includes(normalizedId)
+        ? currentIds.filter((itemId) => itemId !== normalizedId)
+        : [...currentIds, normalizedId],
+    );
+  }, []);
+
+  const selectAllCartItems = useCallback(() => {
+    setSelectedCartItemIds(items.map((item) => item.id));
+  }, [items]);
+
+  const clearCartItemSelection = useCallback(() => {
+    setSelectedCartItemIds([]);
   }, []);
 
   const subtotal = useMemo(
     () => items.reduce((sum, item) => sum + item.price, 0),
     [items],
+  );
+  const selectedCartItems = useMemo(() => {
+    const selectedIds = new Set(selectedCartItemIds);
+    return items.filter((item) => selectedIds.has(item.id));
+  }, [items, selectedCartItemIds]);
+  const selectedSubtotal = useMemo(
+    () => selectedCartItems.reduce((sum, item) => sum + item.price, 0),
+    [selectedCartItems],
   );
   const itemCount = items.length;
 
@@ -149,15 +195,22 @@ export function CartProvider({ children }) {
       items,
       itemCount,
       subtotal,
+      selectedCartItemIds,
+      selectedCartItems,
+      selectedSubtotal,
       isLoading,
       error,
       refreshCart,
       addToCart,
       removeFromCart,
       clearLocalCart,
+      toggleCartItemSelection,
+      selectAllCartItems,
+      clearCartItemSelection,
     }),
     [
       addToCart,
+      clearCartItemSelection,
       clearLocalCart,
       error,
       isLoading,
@@ -165,7 +218,12 @@ export function CartProvider({ children }) {
       items,
       refreshCart,
       removeFromCart,
+      selectAllCartItems,
+      selectedCartItemIds,
+      selectedCartItems,
+      selectedSubtotal,
       subtotal,
+      toggleCartItemSelection,
     ],
   );
 

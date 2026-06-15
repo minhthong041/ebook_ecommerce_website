@@ -35,6 +35,7 @@ def get_best_promotion_for_book(book):
         .filter(
             Q(promotion_books__book_id=book.pk)
             | Q(promotion_categories__category_id__in=category_ids)
+            | (Q(promotion_books__isnull=True) & Q(promotion_categories__isnull=True))
         )
         .distinct()
         .order_by("-discount_rate", "name")
