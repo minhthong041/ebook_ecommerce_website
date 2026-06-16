@@ -28,6 +28,20 @@ def create_book(title="Promotion Test Book", price="100000.00"):
 
 
 class PromotionPricingUnitTests(APITestCase):
+    def test_unscoped_promotion_discounts_all_books(self):
+        book = create_book()
+        Promotion.objects.create(
+            name="Sitewide sale",
+            discount_rate=Decimal("10.00"),
+            start_date=timezone.localdate() - timedelta(days=1),
+            end_date=timezone.localdate() + timedelta(days=1),
+        )
+
+        pricing = get_promotional_pricing(book)
+
+        self.assertEqual(pricing["price"], Decimal("90000.00"))
+        self.assertEqual(pricing["promotion_discount_rate"], Decimal("10.00"))
+
     def test_category_promotion_discounts_book_price(self):
         book = create_book()
         category = Category.objects.create(name="Triết học")
@@ -97,6 +111,32 @@ class CouponCheckoutIntegrationTests(APITestCase):
                 discount_applied=Decimal("10000.00"),
             ).exists()
         )
+
+    def test_coupon_validate_uses_selected_cart_items(self):
+        selected_book = create_book("Selected Coupon Book", price="100000.00")
+        unselected_book = create_book("Unselected Coupon Book", price="200000.00")
+        cart = ShoppingCart.objects.create(customer=self.user.customer)
+        selected_item = ShoppingCartItem.objects.create(cart=cart, book=selected_book)
+        ShoppingCartItem.objects.create(cart=cart, book=unselected_book)
+        Coupon.objects.create(
+            code="BIGSAVE",
+            discount_value=Decimal("150000.00"),
+            usage_limit=3,
+            expiry_date=timezone.now() + timedelta(days=1),
+        )
+
+        response = self.client.post(
+            reverse("coupon-validate"),
+            {
+                "coupon_code": "BIGSAVE",
+                "cart_item_ids": [selected_item.id],
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(response.data["discount_amount"], "100000.00")
+        self.assertEqual(response.data["total_price"], "0.00")
 
 
 class PromotionAdminApiTests(APITestCase):

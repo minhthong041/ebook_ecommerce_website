@@ -48,6 +48,7 @@ export default function CartDrawer({
   isLoading = false,
   onClose,
   onRemove,
+  onCheckout,
 }) {
   const navigate = useNavigate();
   const subtotal = useMemo(
@@ -126,6 +127,10 @@ export default function CartDrawer({
                 type="button"
                 className="btn btn-primary cart-drawer__checkout"
                 onClick={() => {
+                  if (onCheckout) {
+                    onCheckout();
+                    return;
+                  }
                   onClose();
                   navigate("/checkout");
                 }}

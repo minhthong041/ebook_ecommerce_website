@@ -4,7 +4,6 @@ from rest_framework import serializers
 from catalog.models import Book, Category
 
 from .models import Coupon, Promotion
-from .services import calculate_cart_pricing
 
 
 class PromotionManagementSerializer(serializers.ModelSerializer):
@@ -146,16 +145,11 @@ class CouponManagementSerializer(serializers.ModelSerializer):
 
 class CouponValidateSerializer(serializers.Serializer):
     coupon_code = serializers.CharField(max_length=50)
+    cart_item_ids = serializers.ListField(
+        child=serializers.IntegerField(),
+        required=False,
+        allow_empty=True,
+    )
 
     def validate_coupon_code(self, value):
         return value.strip().upper()
-
-    def validate(self, attrs):
-        cart_items = self.context.get("cart_items") or []
-        if not cart_items:
-            raise serializers.ValidationError({"coupon_code": "Giỏ hàng đang trống."})
-        attrs["pricing"] = calculate_cart_pricing(
-            cart_items,
-            coupon_code=attrs["coupon_code"],
-        )
-        return attrs

@@ -3,7 +3,7 @@ from django.urls import reverse
 from rest_framework import status
 from rest_framework.test import APITestCase
 
-from accounts.models import User, UserTokenFamily
+from accounts.models import Role, User, UserTokenFamily
 from accounts.views import get_tokens_for_user
 
 from .models import (
@@ -153,3 +153,25 @@ class AdminCategoryApiIntegrationTests(APITestCase):
 
         self.assertEqual(update_response.status_code, status.HTTP_200_OK)
         self.assertEqual(update_response.data["name"], "Công nghệ thông tin")
+
+    def test_employee_can_create_category(self):
+        employee_role = Role.objects.create(name="Employee")
+        employee = User.objects.create_user(
+            username="category_employee",
+            email="category_employee@example.com",
+            password="ReadifyPass123!",
+            full_name="Category Employee",
+            role=employee_role,
+        )
+        family = UserTokenFamily.objects.create(user=employee)
+        access_token, _ = get_tokens_for_user(employee, family.id)
+        self.client.cookies["access_token"] = access_token
+
+        response = self.client.post(
+            reverse("admin-category-list"),
+            {"name": "Sách thiếu nhi"},
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertEqual(response.data["name"], "Sách thiếu nhi")

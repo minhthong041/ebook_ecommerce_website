@@ -15,7 +15,7 @@ from rest_framework.response import Response
 
 from accounts.authentications import JWTAuthentication
 from accounts.models import Customer
-from accounts.permissions import IsStaffManager
+from accounts.permissions import IsStaffManager, IsSystemAdmin
 from cart.models import ShoppingCart
 from orders.models import OrderLine, ShopOrder
 from payments.models import PaymentType, Transaction, TransactionStatus
@@ -229,7 +229,7 @@ def staff_order_detail(request, pk):
 
 @api_view(["GET"])
 @authentication_classes([JWTAuthentication])
-@permission_classes([IsStaffManager])
+@permission_classes([IsSystemAdmin])
 def staff_dashboard_stats(request):
     expire_pending_orders()
     now = timezone.localtime()
@@ -351,7 +351,24 @@ def checkout(request):
             status=status.HTTP_400_BAD_REQUEST,
         )
 
-    cart_items = list(cart.items.select_related("book").all())
+    cart_items_queryset = cart.items.select_related("book").all()
+    selected_cart_item_ids = serializer.validated_data.get("cart_item_ids", None)
+    if selected_cart_item_ids is not None:
+        unique_selected_ids = set(selected_cart_item_ids)
+        if not unique_selected_ids:
+            return Response(
+                {"detail": "Vui lòng chọn ít nhất một sách để thanh toán."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        cart_items_queryset = cart_items_queryset.filter(id__in=unique_selected_ids)
+
+    cart_items = list(cart_items_queryset)
+    if selected_cart_item_ids is not None and len(cart_items) != len(unique_selected_ids):
+        return Response(
+            {"detail": "Một số sách được chọn không còn trong giỏ hàng."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
     purchased_book_ids = get_purchased_book_ids(customer)
     pending_book_ids = get_active_pending_book_ids(customer)
     purchased_cart_items = [
@@ -382,6 +399,7 @@ def checkout(request):
         )
 
     pricing = calculate_cart_pricing(cart_items, coupon_code=coupon_code)
+    checked_out_cart_item_ids = [item.pk for item in cart_items]
     total_price = pricing["total_price"]
 
     with db_transaction.atomic():
@@ -436,7 +454,7 @@ def checkout(request):
                     ),
                 },
             )
-            cart.items.all().delete()
+            cart.items.filter(pk__in=checked_out_cart_item_ids).delete()
             result = OrderReadSerializer(shop_order, context={"request": request}).data
             return Response(result, status=status.HTTP_201_CREATED)
 
@@ -460,7 +478,7 @@ def checkout(request):
             },
         )
 
-        cart.items.all().delete()
+        cart.items.filter(pk__in=checked_out_cart_item_ids).delete()
 
         shop_order.order_status = order_status_completed
         shop_order.save(update_fields=["order_status"])

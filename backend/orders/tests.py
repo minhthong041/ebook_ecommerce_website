@@ -1,9 +1,13 @@
 from datetime import timedelta
 
 from django.test import TestCase
+from django.urls import reverse
 from django.utils import timezone
+from rest_framework import status
+from rest_framework.test import APIClient
 
-from accounts.models import User
+from accounts.models import Role, User
+from cart.models import ShoppingCart, ShoppingCartItem
 from catalog.models import Book, Publisher
 
 from .models import OrderLine, ShopOrder
@@ -69,3 +73,107 @@ class PendingOrderServiceTests(TestCase):
         self.assertEqual(active_pending_ids, {active_book.id})
         expired_order.refresh_from_db()
         self.assertEqual(expired_order.order_status.name, ORDER_STATUS_CANCELLED)
+
+
+class StaffDashboardStatsPermissionTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.url = reverse("staff-dashboard-stats")
+
+    def test_admin_can_view_dashboard_stats(self):
+        admin_role = Role.objects.create(name="Admin")
+        admin = User.objects.create_superuser(
+            username="dashboard_admin",
+            email="dashboard_admin@example.com",
+            password="ReadifyPass123!",
+            full_name="Dashboard Admin",
+            role=admin_role,
+        )
+        self.client.force_authenticate(user=admin)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+    def test_employee_cannot_view_dashboard_stats(self):
+        employee_role = Role.objects.create(name="Employee")
+        employee = User.objects.create_user(
+            username="dashboard_employee",
+            email="dashboard_employee@example.com",
+            password="ReadifyPass123!",
+            full_name="Dashboard Employee",
+            role=employee_role,
+            is_staff=True,
+        )
+        self.client.force_authenticate(user=employee)
+
+        response = self.client.get(self.url)
+
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+
+
+class CheckoutSelectedCartItemsTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(
+            username="selected_checkout_user",
+            email="selected_checkout_user@example.com",
+            password="ReadifyPass123!",
+            full_name="Selected Checkout User",
+        )
+        self.client.force_authenticate(user=self.user)
+        self.url = reverse("checkout")
+
+    def test_checkout_only_selected_cart_items(self):
+        selected_book = create_book("Selected Checkout Book")
+        remaining_book = create_book("Remaining Cart Book")
+        cart = ShoppingCart.objects.create(customer=self.user.customer)
+        selected_item = ShoppingCartItem.objects.create(cart=cart, book=selected_book)
+        remaining_item = ShoppingCartItem.objects.create(cart=cart, book=remaining_book)
+
+        response = self.client.post(
+            self.url,
+            {
+                "payment_method": "card",
+                "cart_item_ids": [selected_item.id],
+                "card": {
+                    "token": "demo-token",
+                    "brand": "Visa",
+                    "last4": "4242",
+                },
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        order = ShopOrder.objects.get()
+        self.assertEqual(order.lines.count(), 1)
+        self.assertEqual(order.lines.first().book, selected_book)
+        self.assertFalse(
+            ShoppingCartItem.objects.filter(pk=selected_item.pk).exists()
+        )
+        self.assertTrue(
+            ShoppingCartItem.objects.filter(pk=remaining_item.pk).exists()
+        )
+
+    def test_checkout_requires_at_least_one_selected_cart_item(self):
+        book = create_book("Unchecked Checkout Book")
+        cart = ShoppingCart.objects.create(customer=self.user.customer)
+        ShoppingCartItem.objects.create(cart=cart, book=book)
+
+        response = self.client.post(
+            self.url,
+            {
+                "payment_method": "card",
+                "cart_item_ids": [],
+                "card": {
+                    "token": "demo-token",
+                    "brand": "Visa",
+                    "last4": "4242",
+                },
+            },
+            format="json",
+        )
+
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertEqual(ShopOrder.objects.count(), 0)

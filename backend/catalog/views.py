@@ -9,8 +9,6 @@ from rest_framework.pagination import PageNumberPagination
 
 from accounts.authentications import JWTAuthentication
 from accounts.models import Customer
-from accounts.permissions import IsSystemAdmin
-
 from .models import Author, Book, BookReview, Category, FormatType, Publisher, Series, Wishlist
 from .permissions import IsCatalogStaff
 from .serializers import (
@@ -83,7 +81,7 @@ class CategoryViewSet(viewsets.ReadOnlyModelViewSet):
 
 class AdminCategoryViewSet(viewsets.ModelViewSet):
     authentication_classes = [JWTAuthentication]
-    permission_classes = [IsSystemAdmin]
+    permission_classes = [IsCatalogStaff]
     serializer_class = AdminCategorySerializer
     filter_backends = [filters.SearchFilter, filters.OrderingFilter]
     search_fields = ["name"]

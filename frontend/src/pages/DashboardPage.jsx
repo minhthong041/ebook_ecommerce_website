@@ -33,6 +33,11 @@ function canManageCatalog(user) {
   );
 }
 
+function canViewDashboardStats(user) {
+  const normalizedRole = (user?.role || "").trim().toLowerCase();
+  return Boolean(user?.is_superuser || normalizedRole === "admin");
+}
+
 function formatCurrency(value) {
   return Number(value || 0).toLocaleString("vi-VN", {
     style: "currency",
@@ -53,12 +58,13 @@ export default function DashboardPage() {
   const { user } = useContext(AuthContext);
   const displayName = user?.full_name || user?.username || "Người dùng";
   const hasCatalogAccess = canManageCatalog(user);
+  const hasStatsAccess = canViewDashboardStats(user);
   const [staffStats, setStaffStats] = useState(null);
   const [isStatsLoading, setIsStatsLoading] = useState(false);
   const [statsError, setStatsError] = useState("");
 
   useEffect(() => {
-    if (!hasCatalogAccess) {
+    if (!hasStatsAccess) {
       return undefined;
     }
 
@@ -86,7 +92,7 @@ export default function DashboardPage() {
       isMounted = false;
       window.clearTimeout(loadStatsTimer);
     };
-  }, [hasCatalogAccess]);
+  }, [hasStatsAccess]);
 
   const maxMonthlyRevenue = useMemo(() => {
     const revenues = staffStats?.monthly_revenue?.map((item) => Number(item.revenue || 0)) || [];
@@ -144,7 +150,7 @@ export default function DashboardPage() {
           </Card>
         </Box>
 
-        {hasCatalogAccess && (
+        {hasStatsAccess && (
           <Card sx={{ p: 3, borderRadius: 2 }}>
             <Stack spacing={2.5}>
               <Stack

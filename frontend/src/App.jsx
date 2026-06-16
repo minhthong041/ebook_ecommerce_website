@@ -219,7 +219,7 @@ const router = createBrowserRouter([
       {
         path: "admin/categories",
         element: (
-          <ProtectedRoute allowedRoles={["admin"]}>
+          <ProtectedRoute allowedRoles={["admin", "staff"]}>
             <AdminCategoryManagement />
           </ProtectedRoute>
         ),

@@ -4,6 +4,7 @@ import {
   Box,
   Button,
   Card,
+  Checkbox,
   Chip,
   CircularProgress,
   Container,
@@ -74,6 +75,15 @@ function formatDate(value) {
   return new Intl.DateTimeFormat("vi-VN").format(new Date(value));
 }
 
+function formatScopeSummary(item) {
+  const bookCount = item.book_count || 0;
+  const categoryCount = item.category_count || 0;
+  if (bookCount === 0 && categoryCount === 0) {
+    return "Áp dụng toàn bộ sách.";
+  }
+  return `Áp dụng ${bookCount} sách, ${categoryCount} thể loại.`;
+}
+
 function toDateTimeLocal(value) {
   if (!value) {
     return "";
@@ -103,39 +113,79 @@ function getApiError(error, fallback) {
 }
 
 function MultiSelectBox({ label, options, value, onChange }) {
+  const selectedValues = new Set(value.map(Number));
+  const toggleValue = (optionId) => {
+    const numericId = Number(optionId);
+    const nextValue = selectedValues.has(numericId)
+      ? value.filter((itemId) => Number(itemId) !== numericId)
+      : [...value, numericId];
+
+    onChange(nextValue);
+  };
+
   return (
     <Box>
       <Typography sx={{ mb: 0.75, fontWeight: 800 }}>{label}</Typography>
       <Box
-        component="select"
-        multiple
-        value={value.map(String)}
-        onChange={(event) => {
-          const nextValue = Array.from(event.target.selectedOptions).map((option) =>
-            Number(option.value),
-          );
-          onChange(nextValue);
-        }}
+        role="listbox"
+        aria-label={label}
+        aria-multiselectable="true"
         sx={{
           width: "100%",
           minHeight: 132,
-          p: 1,
+          maxHeight: 220,
+          overflowY: "auto",
+          p: 0.75,
           borderRadius: 2,
           border: "1px solid #dbe2ea",
           bgcolor: "background.paper",
           color: "text.primary",
           fontFamily: "inherit",
-          "& option": { p: 1 },
         }}
       >
         {options.map((option) => (
-          <option key={option.id} value={option.id}>
-            {option.title || option.name}
-          </option>
+          <Box
+            key={option.id}
+            component="label"
+            role="option"
+            aria-selected={selectedValues.has(Number(option.id))}
+            sx={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              gap: 1,
+              px: 1,
+              py: 0.75,
+              border: 0,
+              borderRadius: 1.5,
+              bgcolor: selectedValues.has(Number(option.id))
+                ? "rgba(211, 47, 47, 0.08)"
+                : "transparent",
+              color: "text.primary",
+              textAlign: "left",
+              cursor: "pointer",
+              "&:hover": {
+                bgcolor: selectedValues.has(Number(option.id))
+                  ? "rgba(211, 47, 47, 0.14)"
+                  : "action.hover",
+              },
+            }}
+          >
+            <Checkbox
+              size="small"
+              checked={selectedValues.has(Number(option.id))}
+              onChange={() => toggleValue(option.id)}
+              disableRipple
+              sx={{ p: 0 }}
+            />
+            <Box component="span" sx={{ minWidth: 0, overflowWrap: "anywhere" }}>
+              {option.title || option.name}
+            </Box>
+          </Box>
         ))}
       </Box>
       <Typography variant="caption" color="text.secondary">
-        Giữ Ctrl để chọn nhiều mục. Bỏ trống nghĩa là áp dụng toàn bộ.
+        Click để chọn, click lại để bỏ chọn. Không chọn mục nào nghĩa là áp dụng toàn bộ.
       </Typography>
     </Box>
   );
@@ -461,7 +511,7 @@ export default function AdminPromotionManagement() {
                         Giảm {Number(promotion.discount_rate || 0)}% · {formatDate(promotion.start_date)} - {formatDate(promotion.end_date)}
                       </Typography>
                       <Typography color="text.secondary" variant="body2">
-                        Áp dụng {promotion.book_count || 0} sách, {promotion.category_count || 0} thể loại.
+                        {formatScopeSummary(promotion)}
                       </Typography>
                     </Box>
                     <Stack direction="row" spacing={0.75}>
@@ -520,7 +570,7 @@ export default function AdminPromotionManagement() {
                       </Typography>
                       <Typography color="text.secondary" variant="body2">
                         Đã dùng {coupon.usage_count || 0}
-                        {coupon.usage_limit ? `/${coupon.usage_limit}` : ""} lượt · Áp dụng {coupon.book_count || 0} sách, {coupon.category_count || 0} thể loại.
+                        {coupon.usage_limit ? `/${coupon.usage_limit}` : ""} lượt · {formatScopeSummary(coupon)}
                       </Typography>
                     </Box>
                     <Stack direction="row" spacing={0.75}>
@@ -594,7 +644,10 @@ export default function AdminPromotionManagement() {
                 onChange={(event) =>
                   setPromotionForm((current) => ({ ...current, start_date: event.target.value }))
                 }
-                InputLabelProps={{ shrink: true }}
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { "aria-label": "Ngày bắt đầu" },
+                }}
               />
               <TextField
                 label="Ngày kết thúc"
@@ -603,7 +656,10 @@ export default function AdminPromotionManagement() {
                 onChange={(event) =>
                   setPromotionForm((current) => ({ ...current, end_date: event.target.value }))
                 }
-                InputLabelProps={{ shrink: true }}
+                slotProps={{
+                  inputLabel: { shrink: true },
+                  htmlInput: { "aria-label": "Ngày kết thúc" },
+                }}
               />
             </Box>
             <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
@@ -673,7 +729,10 @@ export default function AdminPromotionManagement() {
               onChange={(event) =>
                 setCouponForm((current) => ({ ...current, expiry_date: event.target.value }))
               }
-              InputLabelProps={{ shrink: true }}
+              slotProps={{
+                inputLabel: { shrink: true },
+                htmlInput: { "aria-label": "Ngày hết hạn" },
+              }}
             />
             <Box sx={{ display: "grid", gap: 2, gridTemplateColumns: { xs: "1fr", md: "1fr 1fr" } }}>
               <MultiSelectBox
